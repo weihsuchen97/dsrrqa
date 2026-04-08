@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx shadcn@latest init --yes)",
+      "Bash(npx shadcn@latest init --help)",
+      "Bash(npx shadcn@latest init -y -b radix --css-variables)",
+      "Bash(yes \"\")",
+      "Bash(npm install:*)"
+    ]
+  }
+}
