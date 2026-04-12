@@ -9,12 +9,13 @@ import { WeatherWidget } from '@/components/WeatherWidget'
 import { TodoSection } from '@/components/TodoSection'
 import { FishTank } from '@/components/FishTank'
 import { FishOverlay } from '@/components/FishOverlay'
+import { ResizeHandles } from '@/components/ResizeHandles'
 import { useTodos } from '@/hooks/useTodos'
 
 const IS_OVERLAY = window.location.hash === '#overlay'
 
 function MainWidget() {
-  const { todos, loaded, addTodo, toggleTodo, deleteTodo, completionRate, total, done } = useTodos()
+  const { todos, loaded, addTodo, toggleTodo, deleteTodo, editTodo, completionRate, total, done } = useTodos()
   const [fishActive, setFishActive] = useState(false)
 
   // 修正 3：當視窗從最小化還原時，重新確認 overlay 是否還存在
@@ -48,6 +49,8 @@ function MainWidget() {
   }
 
   return (
+    <>
+    <ResizeHandles />
     <div className="widget-card">
       {/* ① 標題列 */}
       <TitleBar fishActive={fishActive} onFishToggle={handleFishToggle} />
@@ -73,6 +76,7 @@ function MainWidget() {
           onToggle={toggleTodo}
           onDelete={deleteTodo}
           onAdd={addTodo}
+          onEdit={editTodo}
         />
       </div>
 
@@ -80,6 +84,7 @@ function MainWidget() {
       <Separator className="bg-white/6 shrink-0 mx-2" />
       <FishTank />
     </div>
+    </>
   )
 }
 

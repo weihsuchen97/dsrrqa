@@ -32,6 +32,9 @@
 | F-21 | 點擊魚時快速游向隨機方向 | ✅ | scatter 機制，pointer-events auto |
 | F-22 | 全螢幕浮層出現在主視窗所在螢幕 | ✅ | current_monitor() 而非 primary |
 | F-23 | 預留外部瑕疵單系統欄位 | ✅ | externalKey/Status/Source/Url |
+| F-24 | 視窗可拖拉邊緣調整大小 | ✅ | resizable:true + 自製 ResizeHandles（8 方向），最小 300×500 |
+| F-25 | 待辦事項：標題行內編輯（雙擊） | ✅ | Enter/blur 儲存，Escape 取消，已完成項目不可編輯 |
+| F-26 | 待辦事項：依優先度篩選 | ✅ | Header 高/中/低 badge 篩選鈕，再點一次取消篩選 |
 
 ---
 
@@ -56,14 +59,31 @@
 
 ---
 
+## Roadmap（規劃中功能）
+
+| # | 功能 | 狀態 | 備註 |
+|---|------|------|------|
+| R-01 | 優化代辦事項閱讀欄 | ❌ | 提升清單可讀性與排版 |
+| R-02 | 發布網站：Release log + CI/CD 自動打包 exe/dmg | ❌ | 供使用者下載各版本 |
+| R-03 | 隨手記功能（free format 獨立視窗） | ❌ | 類便條紙，非結構化輸入 |
+| R-04 | 已完成事項可收合區塊（三分鐘自動收合） | ❌ | 避免完成項目佔據版面 |
+| R-05 | 關閉視窗時縮到系統托盤圖示 | ❌ | × 按鈕改為 hide_to_tray |
+| R-06 | 任務完成時同步至網頁版 Todo | ❌ | 需設計後端 API / 同步機制 |
+| R-07 | 串接 Fabric 資料顯示於視窗 | ❌ | 整合外部資料來源 |
+| R-08 | Settings：視窗顏色主題設定 | ❌ | 多組配色供選擇 |
+| R-09 | 商城：選擇自定義動物/角色 | ❌ | 擴充水族箱生物種類 |
+| R-10 | 每隻魚對應一筆代辦，點擊展開 | ❌ | 魚作為代辦事項的視覺化載體 |
+
+---
+
 ## 技術架構快照
 
 - **前端**: React 19 + TypeScript + Tailwind CSS v4 + shadcn/ui (Nova) + Framer Motion
 - **後端**: Tauri 2.0 + Rust + tauri-plugin-store
-- **視窗**: 380×680, decorations:false, transparent, alwaysOnTop
+- **視窗**: 380×680 (min 300×500), decorations:false, transparent, alwaysOnTop, resizable
 - **資料**: todos.json via tauri-plugin-store
 - **天氣**: ip-api.com (座標) + Open-Meteo (天氣)
 
 ---
 
-*最後更新：2026-04-06*
+*最後更新：2026-04-12*

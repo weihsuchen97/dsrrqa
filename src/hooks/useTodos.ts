@@ -64,9 +64,20 @@ export function useTodos() {
     [todos, persist]
   )
 
+  const editTodo = useCallback(
+    async (id: string, newTitle: string) => {
+      const trimmed = newTitle.trim()
+      if (!trimmed) return
+      const next = todos.map((t) => t.id === id ? { ...t, title: trimmed } : t)
+      setTodos(next)
+      await persist(next)
+    },
+    [todos, persist]
+  )
+
   const total = todos.length
   const done = todos.filter((t) => t.completed).length
   const completionRate = total === 0 ? 0 : done / total
 
-  return { todos, loaded, addTodo, toggleTodo, deleteTodo, completionRate, total, done }
+  return { todos, loaded, addTodo, toggleTodo, deleteTodo, editTodo, completionRate, total, done }
 }
