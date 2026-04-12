@@ -1,14 +1,21 @@
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { FishA, FishB, Shrimp, Seaweed } from './FishCreatures'
+import { Seaweed, renderCreatureById } from './FishCreatures'
 import { useFishAnimation, type FishDef } from '@/hooks/useFishAnimation'
+import { useSettings } from '@/hooks/useSettings'
+import type { CreatureId } from '@/types/settings'
 
-const FISH_DEFS: FishDef[] = [
-  { id: 'f1', type: 'fishA', style: 'linear', color: '#f97316', speed: 55 },
-  { id: 'f2', type: 'fishB', style: 'wave',   color: '#818cf8', speed: 40 },
-  { id: 'f3', type: 'fishA', style: 'dart',   color: '#34d399', speed: 45 },
-  { id: 'sh', type: 'shrimp', style: 'drift', speed: 22 },
-]
+const SWIM_STYLES: Array<FishDef['style']> = ['linear', 'wave', 'dart', 'drift']
+const SPEEDS = [55, 40, 45, 22, 50, 35, 60]
+
+function buildFishDefs(creatures: CreatureId[]): FishDef[] {
+  return creatures.map((id, i) => ({
+    id: `tank-${id}-${i}`,
+    type: id,
+    style: SWIM_STYLES[i % SWIM_STYLES.length],
+    speed: SPEEDS[i % SPEEDS.length],
+  }))
+}
 
 const SEAWEEDS = [
   { x: 8,  h: 38, color: '#15803d' },
@@ -18,30 +25,26 @@ const SEAWEEDS = [
   { x: 88, h: 50, color: '#14532d' },
 ]
 
-function renderFish(type: string, color: string | undefined, scale: number, facingRight: boolean) {
-  const flip = { transform: facingRight ? 'scaleX(1)' : 'scaleX(-1)', display: 'block' }
-  if (type === 'fishA') return <div style={flip}><FishA color={color} scale={scale} /></div>
-  if (type === 'fishB') return <div style={flip}><FishB color={color} scale={scale} /></div>
-  return <div style={flip}><Shrimp scale={scale} /></div>
-}
-
-export function FishTank() {
+export function FishTank({ height = 82 }: { height?: number }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ w: 0, h: 0 })
+  const { settings } = useSettings()
+
+  const fishDefs = useMemo(() => buildFishDefs(settings.enabledCreatures), [settings.enabledCreatures])
 
   useEffect(() => {
     if (!containerRef.current) return
-    const { width, height } = containerRef.current.getBoundingClientRect()
+    const { width } = containerRef.current.getBoundingClientRect()
     setSize({ w: width, h: height })
-  }, [])
+  }, [height])
 
-  const { renderStates, scatter } = useFishAnimation(FISH_DEFS, size.w, size.h)
+  const { renderStates, scatter } = useFishAnimation(fishDefs, size.w, size.h)
 
   return (
     <div
       ref={containerRef}
       className="fish-tank w-full shrink-0"
-      style={{ height: 82 }}
+      style={{ height }}
     >
       {/* Seaweed */}
       {SEAWEEDS.map((sw, i) => (
@@ -57,11 +60,12 @@ export function FishTank() {
       ))}
 
       {/* Bubbles */}
-      <Bubbles containerH={82} />
+      <Bubbles containerH={height} />
 
-      {/* Fish — 可點擊觸發逃跑 */}
+      {/* Creatures */}
       {renderStates.map((rs) => {
-        const def = FISH_DEFS.find((f) => f.id === rs.id)!
+        const def = fishDefs.find((f) => f.id === rs.id)
+        if (!def) return null
         return (
           <div
             key={rs.id}
@@ -74,7 +78,7 @@ export function FishTank() {
             }}
             onClick={() => scatter(rs.id)}
           >
-            {renderFish(def.type, def.color, 0.65, rs.facingRight)}
+            {renderCreatureById(def.type, 0.65, rs.facingRight, def.color)}
           </div>
         )
       })}

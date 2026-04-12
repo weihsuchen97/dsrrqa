@@ -154,6 +154,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             // 初始化滑鼠鉤子的 AppHandle（鉤子只在開啟 overlay 時才安裝）
             #[cfg(windows)]

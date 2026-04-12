@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 
+import type { CreatureId } from '@/types/settings'
+
 export type SwimStyle = 'linear' | 'wave' | 'drift' | 'dart'
 
 export interface FishDef {
   id: string
-  type: 'fishA' | 'fishB' | 'shrimp'
+  type: CreatureId
   style: SwimStyle
   color?: string
   scale?: number

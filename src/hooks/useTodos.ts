@@ -75,9 +75,42 @@ export function useTodos() {
     [todos, persist]
   )
 
+  const editAndInsertAfter = useCallback(
+    (id: string, newTitle: string, priority: TodoItem['priority'] = 'medium'): string => {
+      const newId = crypto.randomUUID()
+      const newItem: TodoItem = {
+        id: newId,
+        title: '',
+        priority,
+        completed: false,
+        createdAt: new Date().toISOString(),
+      }
+      const trimmed = newTitle.trim()
+      const next = todos.flatMap((t) => {
+        if (t.id === id) {
+          const updated = trimmed ? { ...t, title: trimmed } : t
+          return [updated, newItem]
+        }
+        return [t]
+      })
+      setTodos(next)
+      persist(next)
+      return newId
+    },
+    [todos, persist]
+  )
+
+  const reorderTodos = useCallback(
+    async (reordered: TodoItem[]) => {
+      setTodos(reordered)
+      await persist(reordered)
+    },
+    [persist]
+  )
+
   const total = todos.length
   const done = todos.filter((t) => t.completed).length
   const completionRate = total === 0 ? 0 : done / total
 
-  return { todos, loaded, addTodo, toggleTodo, deleteTodo, editTodo, completionRate, total, done }
+  return { todos, loaded, addTodo, toggleTodo, deleteTodo, editTodo, editAndInsertAfter, reorderTodos, completionRate, total, done }
 }

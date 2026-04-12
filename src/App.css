@@ -64,6 +64,7 @@ html, body, #root {
   --color-input:           var(--input);
   --color-ring:            var(--ring);
   --color-destructive:     var(--destructive);
+  --color-white:           rgb(var(--ink, 255 255 255));
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -77,26 +78,32 @@ html, body, #root {
 
 /* ── Widget glass card ──────────────────────────────────────── */
 .widget-card {
+  --ink: 255 255 255;
+  --card-bg: rgba(15, 15, 20, 0.72);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --card-shadow-outer: rgba(0, 0, 0, 0.6);
+  --card-shadow-inset: rgba(255, 255, 255, 0.04);
+
   width: 100%;
   height: 100%;
-  background: rgba(15, 15, 20, 0.72);
+  background: var(--card-bg);
   backdrop-filter: blur(20px) saturate(1.4);
   -webkit-backdrop-filter: blur(20px) saturate(1.4);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--card-border);
   border-radius: 16px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6),
-              0 0 0 1px rgba(255,255,255,0.04) inset;
-  /* 加入整體內距，避免內容貼邊（左右 6px，上下 8px） */
+  box-shadow: 0 8px 40px var(--card-shadow-outer),
+              0 0 0 1px var(--card-shadow-inset);
   padding: 8px 6px;
 }
 
-/* 各區塊統一水平內距 */
+/* 各區塊統一水平內距，overflow: hidden 防止區塊間內容重疊 */
 .widget-section {
   padding-left: 8px;
   padding-right: 8px;
+  overflow: hidden;
 }
 
 /* ── Drag region ────────────────────────────────────────────── */
@@ -108,20 +115,13 @@ html, body, #root {
   cursor: grabbing;
 }
 
-/* ── Priority badge colours ─────────────────────────────────── */
-.badge-high   { background-color: var(--priority-high);   color: #fff; }
-.badge-medium { background-color: var(--priority-medium); color: #000; }
-.badge-low    { background-color: var(--priority-low);    color: #000; }
+/* Priority colours are now handled inline via PriorityBars SVG */
 
 /* ── Fish tank container ────────────────────────────────────── */
 .fish-tank {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(
-    to bottom,
-    rgba(0, 40, 80, 0.5),
-    rgba(0, 20, 50, 0.7)
-  );
+  background: var(--tank-bg, linear-gradient(to bottom, rgba(0,40,80,0.5), rgba(0,20,50,0.7)));
 }
 
 /* ── Fish overlay (fullscreen transparent) ─────────────────── */
@@ -137,7 +137,7 @@ html, body, #root {
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.15);
+  background: rgb(var(--ink, 255 255 255) / 0.15);
   border-radius: 2px;
 }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--ink, 255 255 255) / 0.25); }

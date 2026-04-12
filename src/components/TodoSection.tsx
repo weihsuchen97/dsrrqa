@@ -1,11 +1,9 @@
-import { useState, KeyboardEvent } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useRef, KeyboardEvent, useCallback } from 'react'
+import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Separator } from '@/components/ui/separator'
 import type { TodoItem } from '@/types/todo'
 import { cn } from '@/lib/utils'
@@ -18,31 +16,58 @@ const PRIORITY_LABELS: Record<Priority, string> = {
   low:    '低',
 }
 
-const PRIORITY_BADGE_CLASS: Record<Priority, string> = {
-  high:   'badge-high',
-  medium: 'badge-medium',
-  low:    'badge-low',
+const PRIORITY_COLORS: Record<Priority, string> = {
+  high:   '#f87171',
+  medium: '#fbbf24',
+  low:    '#4ade80',
+}
+
+const PRIORITY_TOOLTIP: Record<Priority, string> = {
+  high:   '高優先',
+  medium: '中優先',
+  low:    '低優先',
+}
+
+/** Signal-bars priority indicator — lit bars convey urgency */
+function PriorityBars({ priority }: { priority: Priority }) {
+  const isHigh = priority === 'high'
+  const isMedOrHigh = priority === 'medium' || isHigh
+  const color = PRIORITY_COLORS[priority]
+  const dim = 'rgba(255,255,255,0.08)'
+
+  return (
+    <svg
+      width="14" height="12" viewBox="0 0 14 12"
+      className="shrink-0"
+      style={{ filter: `drop-shadow(0 0 3px ${color}40)` }}
+    >
+      <rect x="0.5" y="7.5" width="3.2" height="4" rx="0.8" fill={color} />
+      <rect x="5.4" y="4" width="3.2" height="7.5" rx="0.8" fill={isMedOrHigh ? color : dim} />
+      <rect x="10.3" y="0.5" width="3.2" height="11" rx="0.8" fill={isHigh ? color : dim} />
+    </svg>
+  )
 }
 
 interface TodoRowProps {
   item: TodoItem
+  isEditing: boolean
   onToggle: (id: string) => void
   onDelete: (id: string) => void
-  onEdit: (id: string, newTitle: string) => void
+  onStartEdit: (id: string) => void
+  onFinishEdit: (id: string, newTitle: string) => void
+  onCancelEdit: (id: string) => void
+  onEnterInEdit: (id: string, currentTitle: string) => void
 }
 
-function TodoRow({ item, onToggle, onDelete, onEdit }: TodoRowProps) {
+function TodoRow({ item, isEditing, onToggle, onDelete, onStartEdit, onFinishEdit, onCancelEdit, onEnterInEdit }: TodoRowProps) {
   const [hovered, setHovered] = useState(false)
-  const [editing, setEditing] = useState(false)
-
-  function commitEdit(value: string) {
-    const trimmed = value.trim()
-    if (trimmed && trimmed !== item.title) onEdit(item.id, trimmed)
-    setEditing(false)
-  }
+  const dragControls = useDragControls()
 
   return (
-    <motion.div
+    <Reorder.Item
+      value={item}
+      dragListener={false}
+      dragControls={dragControls}
       layout
       initial={{ opacity: 0, x: -12 }}
       animate={{ opacity: 1, x: 0 }}
@@ -51,33 +76,54 @@ function TodoRow({ item, onToggle, onDelete, onEdit }: TodoRowProps) {
       className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 group transition-colors"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      style={{ listStyle: 'none' }}
     >
+      {/* Drag handle */}
+      <div
+        className="shrink-0 cursor-grab active:cursor-grabbing text-white/15 hover:text-white/40 transition-colors touch-none select-none"
+        onPointerDown={(e) => dragControls.start(e)}
+      >
+        <svg width="8" height="14" viewBox="0 0 8 14" fill="currentColor">
+          <circle cx="2" cy="2" r="1.2" />
+          <circle cx="6" cy="2" r="1.2" />
+          <circle cx="2" cy="7" r="1.2" />
+          <circle cx="6" cy="7" r="1.2" />
+          <circle cx="2" cy="12" r="1.2" />
+          <circle cx="6" cy="12" r="1.2" />
+        </svg>
+      </div>
+
       <Checkbox
         checked={item.completed}
         onCheckedChange={() => onToggle(item.id)}
         className="shrink-0 border-white/30 data-[state=checked]:bg-white/70"
       />
 
-      {editing ? (
+      {isEditing ? (
         <input
           autoFocus
           defaultValue={item.title}
           className="flex-1 text-sm bg-white/10 border border-white/20 rounded px-1 py-0.5 outline-none text-white min-w-0"
-          onBlur={(e) => commitEdit(e.target.value)}
+          onBlur={(e) => onFinishEdit(item.id, e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') commitEdit(e.currentTarget.value)
-            if (e.key === 'Escape') setEditing(false)
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              onEnterInEdit(item.id, e.currentTarget.value)
+            }
+            if (e.key === 'Escape') {
+              onCancelEdit(item.id)
+            }
           }}
         />
       ) : (
         <span
-          onDoubleClick={() => !item.completed && setEditing(true)}
+          onClick={() => !item.completed && onStartEdit(item.id)}
           className={cn(
             'flex-1 text-sm leading-snug truncate transition-all',
             item.completed ? 'line-through text-white/30' : 'text-white/85 cursor-text'
           )}
         >
-          {item.title}
+          {item.title || '\u00A0'}
         </span>
       )}
 
@@ -88,13 +134,15 @@ function TodoRow({ item, onToggle, onDelete, onEdit }: TodoRowProps) {
         </span>
       )}
 
-      {/* 固定寬度讓高/中/低三個標籤等寬對齊 */}
-      <Badge className={cn('text-[10px] px-0 py-0 shrink-0 border-0 w-8 justify-center text-center', PRIORITY_BADGE_CLASS[item.priority])}>
-        {PRIORITY_LABELS[item.priority]}
-      </Badge>
+      <span
+        title={PRIORITY_TOOLTIP[item.priority]}
+        className="inline-flex items-center justify-center w-6 h-5 rounded shrink-0 cursor-default hover:bg-white/5 transition-colors"
+      >
+        <PriorityBars priority={item.priority} />
+      </span>
 
       <AnimatePresence>
-        {hovered && !editing && (
+        {hovered && !isEditing && (
           <motion.button
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -109,7 +157,7 @@ function TodoRow({ item, onToggle, onDelete, onEdit }: TodoRowProps) {
           </motion.button>
         )}
       </AnimatePresence>
-    </motion.div>
+    </Reorder.Item>
   )
 }
 
@@ -147,16 +195,17 @@ function AddForm({ onAdd }: AddFormProps) {
             key={p}
             onClick={() => setPriority(p)}
             className={cn(
-              'flex-1 text-xs py-0.5 rounded-md border transition-all font-medium',
+              'flex-1 flex items-center justify-center gap-1.5 text-xs py-1 rounded-md border transition-all font-medium',
               priority === p
                 ? p === 'high'
-                  ? 'bg-red-500/25 border-red-500/60 text-red-300'
+                  ? 'bg-red-500/15 border-red-400/30 text-red-300'
                   : p === 'medium'
-                  ? 'bg-yellow-500/25 border-yellow-500/60 text-yellow-300'
-                  : 'bg-green-500/25 border-green-500/60 text-green-300'
+                  ? 'bg-yellow-500/15 border-yellow-400/30 text-yellow-300'
+                  : 'bg-green-500/15 border-green-400/30 text-green-300'
                 : 'bg-transparent border-white/10 text-white/40 hover:border-white/20'
             )}
           >
+            <PriorityBars priority={p} />
             {PRIORITY_LABELS[p]}
           </button>
         ))}
@@ -179,18 +228,72 @@ interface TodoSectionProps {
   onDelete: (id: string) => void
   onAdd: (title: string, priority: Priority) => void
   onEdit: (id: string, newTitle: string) => void
+  onEditAndInsertAfter: (id: string, newTitle: string, priority: Priority) => string
+  onReorder: (reordered: TodoItem[]) => void
 }
 
-export function TodoSection({ todos, onToggle, onDelete, onAdd, onEdit }: TodoSectionProps) {
-  const [showForm, setShowForm] = useState(false)
+export function TodoSection({ todos, onToggle, onDelete, onAdd, onEdit, onEditAndInsertAfter, onReorder }: TodoSectionProps) {
   const [filterPriority, setFilterPriority] = useState<Priority | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const skipNextFinishRef = useRef(false)
 
   function handleAdd(title: string, priority: Priority) {
     onAdd(title, priority)
-    setShowForm(false)
+  }
+
+  function handleStartEdit(id: string) {
+    setEditingId(id)
+  }
+
+  function handleFinishEdit(id: string, newTitle: string) {
+    if (skipNextFinishRef.current) {
+      skipNextFinishRef.current = false
+      return
+    }
+    const trimmed = newTitle.trim()
+    if (trimmed) {
+      onEdit(id, trimmed)
+    } else {
+      onDelete(id)
+    }
+    setEditingId(null)
+  }
+
+  function handleCancelEdit(id: string) {
+    skipNextFinishRef.current = true
+    const item = todos.find((t) => t.id === id)
+    if (item && !item.title.trim()) {
+      onDelete(id)
+    }
+    setEditingId(null)
+  }
+
+  function handleEnterInEdit(id: string, currentTitle: string) {
+    skipNextFinishRef.current = true
+    const currentItem = todos.find((t) => t.id === id)
+    const priority = currentItem?.priority ?? 'medium'
+    const newId = onEditAndInsertAfter(id, currentTitle, priority)
+    setEditingId(newId)
   }
 
   const filtered = filterPriority ? todos.filter((t) => t.priority === filterPriority) : todos
+
+  const handleReorder = useCallback((newFiltered: TodoItem[]) => {
+    if (!filterPriority) {
+      onReorder(newFiltered)
+    } else {
+      // 有篩選時：保持未篩選項目的位置，只重排篩選到的項目
+      const filteredPositions: number[] = []
+      todos.forEach((t, i) => {
+        if (t.priority === filterPriority) filteredPositions.push(i)
+      })
+      const result = [...todos]
+      filteredPositions.forEach((pos, i) => {
+        result[pos] = newFiltered[i]
+      })
+      onReorder(result)
+    }
+  }, [todos, filterPriority, onReorder])
 
   return (
     <div className="flex flex-col flex-1 min-h-0 px-2">
@@ -201,72 +304,52 @@ export function TodoSection({ todos, onToggle, onDelete, onAdd, onEdit }: TodoSe
           {(['high', 'medium', 'low'] as Priority[]).map((p) => (
             <button
               key={p}
+              title={PRIORITY_TOOLTIP[p]}
               onClick={() => setFilterPriority((v) => v === p ? null : p)}
               className={cn(
-                'text-[10px] px-1.5 py-0.5 rounded transition-all',
-                PRIORITY_BADGE_CLASS[p],
-                filterPriority === p ? 'opacity-100 ring-1 ring-white/40' : 'opacity-35 hover:opacity-65'
+                'p-1 rounded-md transition-all',
+                filterPriority === p
+                  ? 'bg-white/10 ring-1 ring-white/20 opacity-100'
+                  : 'opacity-35 hover:opacity-70 hover:bg-white/5'
               )}
             >
-              {PRIORITY_LABELS[p]}
+              <PriorityBars priority={p} />
             </button>
           ))}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setShowForm((v) => !v)}
-                className={cn(
-                  'w-6 h-6 rounded flex items-center justify-center transition-all text-sm font-light ml-1',
-                  showForm
-                    ? 'bg-white/15 text-white rotate-45'
-                    : 'text-white/40 hover:text-white/80 hover:bg-white/10'
-                )}
-              >
-                +
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="left"><p>新增待辦事項</p></TooltipContent>
-          </Tooltip>
         </div>
       </div>
 
       <Separator className="bg-white/8 mb-1 shrink-0" />
 
       {/* Add form */}
-      <AnimatePresence>
-        {showForm && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden shrink-0"
-          >
-            <AddForm onAdd={handleAdd} />
-            <Separator className="bg-white/8 mb-1" />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <div className="shrink-0">
+        <AddForm onAdd={handleAdd} />
+        <Separator className="bg-white/8 mb-1" />
+      </div>
 
       {/* List */}
       <ScrollArea className="flex-1 min-h-0">
         <div className="pr-2 pb-2">
           {filtered.length === 0 ? (
             <div className="text-center text-xs text-white/25 py-6">
-              {filterPriority ? '此優先度沒有待辦事項' : '點 + 新增第一筆待辦事項'}
+              {filterPriority ? '此優先度沒有待辦事項' : '輸入文字後按 Enter 新增待辦事項'}
             </div>
           ) : (
-            <AnimatePresence initial={false}>
+            <Reorder.Group axis="y" values={filtered} onReorder={handleReorder} as="div">
               {filtered.map((item) => (
                 <TodoRow
                   key={item.id}
                   item={item}
+                  isEditing={editingId === item.id}
                   onToggle={onToggle}
                   onDelete={onDelete}
-                  onEdit={onEdit}
+                  onStartEdit={handleStartEdit}
+                  onFinishEdit={handleFinishEdit}
+                  onCancelEdit={handleCancelEdit}
+                  onEnterInEdit={handleEnterInEdit}
                 />
               ))}
-            </AnimatePresence>
+            </Reorder.Group>
           )}
         </div>
       </ScrollArea>
