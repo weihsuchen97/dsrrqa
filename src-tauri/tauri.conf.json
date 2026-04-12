@@ -49,7 +49,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM2MDE5NDdFODM1MjQ2QzkKUldUSlJsS0RmcFFCeG1hdmRxVGRpdWpkSStzQ25pcEJjd3VYS3Z1bVZ3cVBJN2w3VEFYUHhrOW0K",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU1NTAwQTAzN0YyN0JFQUEKUldTcXZpZC9Bd3BRNVhnSTBCN1ovMzNBVDhBWTY4NHZ0ZXFkUGxsL0dVTHBybmwwRFlJL1l3ZGcK",
       "endpoints": [
         "https://github.com/weihsuchen97/dsrrqa/releases/latest/download/latest.json"
       ]
