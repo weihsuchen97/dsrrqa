@@ -1,4 +1,4 @@
-name: Release
+name: Build & Release
 
 on:
   push:
@@ -6,59 +6,7 @@ on:
       - main
 
 jobs:
-  check-version:
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.pkg.outputs.version }}
-      tag: ${{ steps.pkg.outputs.tag }}
-      should_release: ${{ steps.check.outputs.should_release }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Get version from package.json
-        id: pkg
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Check if tag exists
-        id: check
-        run: |
-          if git rev-parse "v${{ steps.pkg.outputs.version }}" >/dev/null 2>&1; then
-            echo "should_release=false" >> $GITHUB_OUTPUT
-          else
-            echo "should_release=true" >> $GITHUB_OUTPUT
-          fi
-
-  create-release:
-    needs: check-version
-    if: needs.check-version.outputs.should_release == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    outputs:
-      release_id: ${{ steps.create.outputs.id }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Create git tag
-        run: |
-          git tag ${{ needs.check-version.outputs.tag }}
-          git push origin ${{ needs.check-version.outputs.tag }}
-      - name: Create GitHub Release
-        id: create
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.check-version.outputs.tag }}
-          name: DSRRQA ${{ needs.check-version.outputs.tag }}
-          draft: true
-          generate_release_notes: true
-
-  build-tauri:
-    needs: [check-version, create-release]
-    if: needs.check-version.outputs.should_release == 'true'
+  build-and-release:
     permissions:
       contents: write
     strategy:
@@ -95,6 +43,18 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Bump patch version
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json','utf-8'));
+            const [major,minor,patch] = pkg.version.split('.').map(Number);
+            pkg.version = major+'.'+minor+'.'+(patch+1);
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2)+'\n');
+            console.log('version=' + pkg.version);
+          "
+          node scripts/bump.js
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
@@ -102,33 +62,16 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          releaseId: ${{ needs.create-release.outputs.release_id }}
+          tagName: v__VERSION__
+          releaseName: DSRRQA v__VERSION__
+          releaseBody: "自動建構發布"
+          releaseDraft: false
+          prerelease: false
           args: ${{ matrix.args }}
-
-  publish-release:
-    runs-on: ubuntu-latest
-    needs: [check-version, create-release, build-tauri]
-    if: needs.check-version.outputs.should_release == 'true'
-    permissions:
-      contents: write
-    steps:
-      - name: Publish release
-        uses: actions/github-script@v7
-        env:
-          release_id: ${{ needs.create-release.outputs.release_id }}
-        with:
-          script: |
-            github.rest.repos.updateRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: process.env.release_id,
-              draft: false
-            })
 
   deploy-pages:
     runs-on: ubuntu-latest
-    needs: [check-version, publish-release]
-    if: needs.check-version.outputs.should_release == 'true'
+    needs: build-and-release
     permissions:
       contents: write
     steps:

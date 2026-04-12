@@ -34,7 +34,6 @@ allowed-tools:
 ## 規範
 
 - 提交訊息格式：`{type}: {繁體中文描述}`，type 使用 Conventional Commits（feat/fix/refactor/docs/chore/test/style/perf）
-- 提交訊息結尾加上：`Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>`
 - 指定檔名加入暫存區，不使用 `git add -A` 或 `git add .`
 - 危險操作（force push、reset --hard、branch -D）必須先詢問使用者確認
 - 不得提交敏感檔案（.env、credentials 等）
