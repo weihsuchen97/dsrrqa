@@ -2,11 +2,40 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
 
 jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.pkg.outputs.version }}
+      tag: ${{ steps.pkg.outputs.tag }}
+      should_release: ${{ steps.check.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from package.json
+        id: pkg
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Check if tag exists
+        id: check
+        run: |
+          if git rev-parse "v${{ steps.pkg.outputs.version }}" >/dev/null 2>&1; then
+            echo "should_release=false" >> $GITHUB_OUTPUT
+          else
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          fi
+
   create-release:
+    needs: check-version
+    if: needs.check-version.outputs.should_release == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -14,15 +43,22 @@ jobs:
       release_id: ${{ steps.create.outputs.id }}
     steps:
       - uses: actions/checkout@v4
+      - name: Create git tag
+        run: |
+          git tag ${{ needs.check-version.outputs.tag }}
+          git push origin ${{ needs.check-version.outputs.tag }}
       - name: Create GitHub Release
         id: create
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.check-version.outputs.tag }}
+          name: DSRRQA ${{ needs.check-version.outputs.tag }}
           draft: true
           generate_release_notes: true
 
   build-tauri:
-    needs: create-release
+    needs: [check-version, create-release]
+    if: needs.check-version.outputs.should_release == 'true'
     permissions:
       contents: write
     strategy:
@@ -71,7 +107,8 @@ jobs:
 
   publish-release:
     runs-on: ubuntu-latest
-    needs: [create-release, build-tauri]
+    needs: [check-version, create-release, build-tauri]
+    if: needs.check-version.outputs.should_release == 'true'
     permissions:
       contents: write
     steps:
@@ -90,7 +127,8 @@ jobs:
 
   deploy-pages:
     runs-on: ubuntu-latest
-    needs: publish-release
+    needs: [check-version, publish-release]
+    if: needs.check-version.outputs.should_release == 'true'
     permissions:
       contents: write
     steps:
