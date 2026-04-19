@@ -28,11 +28,13 @@ const STAGE_LABELS: Record<PlantStage, string> = {
   blooming: '盛開期',
 }
 
-function getHealthStatus(water: number, sunlight: number): { label: string; color: string } {
+type HealthStatus = 'healthy' | 'thirsty' | 'wilting'
+
+function getHealthStatus(water: number, sunlight: number): { label: string; status: HealthStatus } {
   const avg = (water + sunlight) / 2
-  if (avg > 60) return { label: '健康', color: '#4ade80' }
-  if (avg > 30) return { label: '口渴', color: '#eab308' }
-  return { label: '枯萎中', color: '#ef4444' }
+  if (avg > 60) return { label: '健康', status: 'healthy' }
+  if (avg > 30) return { label: '口渴', status: 'thirsty' }
+  return { label: '枯萎中', status: 'wilting' }
 }
 
 // ── Plant SVGs per species ──
@@ -214,12 +216,18 @@ function PlantBody({ species, stage }: { species: PlantSpecies; stage: PlantStag
   )
 }
 
-// ── Status bar for water / sunlight ──
-function StatusBar({ value, color, icon }: { value: number; color: string; icon: string }) {
+// ── Stat cell for water / sunlight (橫向並列的單格) ──
+function StatCell({ value, color, icon, label }: { value: number; color: string; icon: string; label: string }) {
   return (
-    <div className="flex items-center gap-1">
-      <span className="text-[10px]">{icon}</span>
-      <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] text-white/55 flex items-center gap-1">
+          <span className="text-[12px]">{icon}</span>
+          {label}
+        </span>
+        <span className="text-[11px] text-white/70 tabular-nums font-medium">{Math.round(value)}</span>
+      </div>
+      <div className="h-1 bg-white/10 rounded-full overflow-hidden">
         <motion.div
           className="h-full rounded-full"
           style={{ backgroundColor: color }}
@@ -228,7 +236,6 @@ function StatusBar({ value, color, icon }: { value: number; color: string; icon:
           transition={{ duration: 0.4 }}
         />
       </div>
-      <span className="text-[9px] text-white/30 w-6 text-right">{Math.round(value)}</span>
     </div>
   )
 }
@@ -286,13 +293,13 @@ export function PlantWidget({ completionRate, total, done }: PlantWidgetProps) {
   }, [updatePlant])
 
   return (
-    <div className="flex items-start gap-3 px-3 py-2 h-full">
-      {/* Plant SVG */}
-      <div className="w-20 h-20 shrink-0">
+    <div className="flex items-stretch gap-3 py-1 h-full">
+      {/* Plant SVG — 左欄填滿高度，和右欄視覺等重 */}
+      <div className="w-24 shrink-0 flex items-center justify-center">
         <AnimatePresence mode="wait">
           <motion.div
             key={`${plant.species}-${stage}`}
-            className="w-full h-full"
+            className="w-full aspect-square"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
@@ -303,41 +310,45 @@ export function PlantWidget({ completionRate, total, done }: PlantWidgetProps) {
         </AnimatePresence>
       </div>
 
-      {/* Info + controls */}
-      <div className="flex-1 min-w-0 flex flex-col gap-1">
+      {/* 右欄：標題群 → 經驗值群 → 水陽光群 → 按鈕群 → footer */}
+      <div className="flex-1 min-w-0 flex flex-col justify-between gap-2">
+        {/* Group 1: 標題（emoji + 名稱 + 健康徽章） */}
         <div className="flex items-center gap-1.5">
-          <span className="text-sm">{speciesCfg.emoji}</span>
-          <span className="text-[10px] font-medium text-white/70">{speciesCfg.name}</span>
-          <span className="text-[9px] px-1 py-0.5 rounded" style={{ backgroundColor: health.color + '30', color: health.color }}>
+          <span className="text-[15px] leading-none">{speciesCfg.emoji}</span>
+          <span className="text-[13px] font-medium text-white/85">{speciesCfg.name}</span>
+          <span className={`status-badge status-${health.status} ml-auto`}>
             {health.label}
           </span>
         </div>
 
-        {/* Stage + exp */}
-        <div className="text-[10px] text-white/40">
-          {STAGE_LABELS[stage]} · Exp {Math.round(plant.experience)}/100
+        {/* Group 2: 主進度（階段 + exp），exp bar 加粗以建立層級 */}
+        <div className="flex flex-col gap-1">
+          <div className="flex items-baseline justify-between">
+            <span className="text-[11px] text-white/55">{STAGE_LABELS[stage]}</span>
+            <span className="text-[11px] text-white/50 tabular-nums">{Math.round(plant.experience)}<span className="text-white/30">/100</span></span>
+          </div>
+          <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+            <motion.div
+              className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-300"
+              animate={{ width: `${plant.experience}%` }}
+              transition={{ duration: 0.6 }}
+            />
+          </div>
         </div>
 
-        {/* Exp bar */}
-        <div className="h-1 bg-white/10 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full rounded-full bg-amber-400"
-            animate={{ width: `${plant.experience}%` }}
-            transition={{ duration: 0.6 }}
-          />
+        {/* Group 3: 水 + 陽光 橫向並列 */}
+        <div className="grid grid-cols-2 gap-3">
+          <StatCell value={plant.water} color="#38bdf8" icon="💧" label="水分" />
+          <StatCell value={plant.sunlight} color="#fbbf24" icon="☀️" label="陽光" />
         </div>
 
-        {/* Water / Sunlight bars */}
-        <StatusBar value={plant.water} color="#38bdf8" icon="💧" />
-        <StatusBar value={plant.sunlight} color="#fbbf24" icon="☀️" />
-
-        {/* Action buttons */}
-        <div className="flex gap-1 mt-0.5">
+        {/* Group 4: 動作按鈕 */}
+        <div className="flex gap-1.5">
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={handleWater}
-                className="flex-1 text-[10px] py-0.5 rounded-md bg-sky-500/15 border border-sky-500/30 text-sky-300 hover:bg-sky-500/25 transition-all"
+                className="flex-1 text-[11px] py-1.5 rounded-md bg-sky-500/15 border border-sky-500/30 text-sky-300 hover:bg-sky-500/25 transition-all font-medium"
               >
                 💧 澆水
               </button>
@@ -348,7 +359,7 @@ export function PlantWidget({ completionRate, total, done }: PlantWidgetProps) {
             <TooltipTrigger asChild>
               <button
                 onClick={handleSunlight}
-                className="flex-1 text-[10px] py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 transition-all"
+                className="flex-1 text-[11px] py-1.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 transition-all font-medium"
               >
                 ☀️ 曬太陽
               </button>
@@ -357,9 +368,10 @@ export function PlantWidget({ completionRate, total, done }: PlantWidgetProps) {
           </Tooltip>
         </div>
 
+        {/* Footer 任務進度（右對齊，極輕量） */}
         {total > 0 && (
-          <div className="text-[9px] text-white/30 mt-0.5">
-            完成 {done}/{total} 項任務驅動成長
+          <div className="text-[11px] text-white/35 text-right tabular-nums">
+            任務 {done}/{total}
           </div>
         )}
       </div>

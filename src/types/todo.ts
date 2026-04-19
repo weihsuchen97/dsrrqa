@@ -5,6 +5,7 @@ export interface TodoItem {
   priority: 'high' | 'medium' | 'low'
   completed: boolean
   createdAt: string // ISO string for JSON serialization
+  completedAt?: string // ISO string, set when marked completed
 
   // Generic external issue tracker fields (not bound to any specific system)
   externalKey?: string       // e.g. "PROJ-123", "BUG-456"

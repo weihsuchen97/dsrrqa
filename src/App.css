@@ -83,6 +83,13 @@ html, body, #root {
   --card-border: rgba(255, 255, 255, 0.08);
   --card-shadow-outer: rgba(0, 0, 0, 0.6);
   --card-shadow-inset: rgba(255, 255, 255, 0.04);
+  --tank-bg: linear-gradient(to bottom, rgba(0,40,80,0.5), rgba(0,20,50,0.7));
+
+  /* 4 級字體刻度：corners-safe、視覺層次清楚 */
+  --fs-caption: 11px; /* 最小輔助資訊：狀態、說明 */
+  --fs-label:   12px; /* 區段標題、按鈕文字 */
+  --fs-body:    13px; /* 內文、待辦項目 */
+  --fs-display: 16px; /* 重點數字：溫度等 */
 
   width: 100%;
   height: 100%;
@@ -96,13 +103,129 @@ html, body, #root {
   overflow: hidden;
   box-shadow: 0 8px 40px var(--card-shadow-outer),
               0 0 0 1px var(--card-shadow-inset);
-  padding: 8px 6px;
+  /* padding ≥ border-radius，避免文字頂到圓角被切到 */
+  padding: 6px 10px;
+  line-height: 1.5;
+}
+
+/* 底部有水族箱時，清掉底部 padding 與 border，讓水族箱貼齊卡片最外緣 */
+.widget-card:has(.fish-tank) {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.widget-card[data-theme="dark"] {
+  --ink: 255 255 255;
+  --card-bg: rgba(15, 15, 20, 0.72);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --card-shadow-outer: rgba(0, 0, 0, 0.6);
+  --card-shadow-inset: rgba(255, 255, 255, 0.04);
+  --tank-bg: linear-gradient(to bottom, rgba(0,40,80,0.5), rgba(0,20,50,0.7));
+}
+
+.widget-card[data-theme="light"] {
+  --ink: 0 0 0;
+  --card-bg: rgba(248, 248, 250, 0.92);
+  --card-border: rgba(0, 0, 0, 0.14);
+  --card-shadow-outer: rgba(0, 0, 0, 0.12);
+  --card-shadow-inset: rgba(255, 255, 255, 0.6);
+  --tank-bg: linear-gradient(to bottom, rgba(120,180,220,0.55), rgba(70,130,185,0.70));
+}
+
+/* 淺色模式文字 alpha 補償：深底原本的 /40 在淺底需約 /60～/75 才讀得清楚 */
+.widget-card[data-theme="light"] .text-white\/15 { color: rgba(0, 0, 0, 0.35) !important; }
+.widget-card[data-theme="light"] .text-white\/25 { color: rgba(0, 0, 0, 0.45) !important; }
+.widget-card[data-theme="light"] .text-white\/30 { color: rgba(0, 0, 0, 0.50) !important; }
+.widget-card[data-theme="light"] .text-white\/40 { color: rgba(0, 0, 0, 0.60) !important; }
+.widget-card[data-theme="light"] .text-white\/50 { color: rgba(0, 0, 0, 0.68) !important; }
+.widget-card[data-theme="light"] .text-white\/60 { color: rgba(0, 0, 0, 0.75) !important; }
+.widget-card[data-theme="light"] .text-white\/70 { color: rgba(0, 0, 0, 0.82) !important; }
+.widget-card[data-theme="light"] .text-white\/80 { color: rgba(0, 0, 0, 0.88) !important; }
+.widget-card[data-theme="light"] .text-white\/85 { color: rgba(0, 0, 0, 0.90) !important; }
+.widget-card[data-theme="light"] .text-white\/90 { color: rgba(0, 0, 0, 0.92) !important; }
+.widget-card[data-theme="light"] .text-white { color: rgba(0, 0, 0, 0.95) !important; }
+
+.widget-card[data-theme="light"] .hover\:text-white\/60:hover { color: rgba(0, 0, 0, 0.75) !important; }
+.widget-card[data-theme="light"] .hover\:text-white\/80:hover { color: rgba(0, 0, 0, 0.88) !important; }
+.widget-card[data-theme="light"] .hover\:text-white\/90:hover { color: rgba(0, 0, 0, 0.92) !important; }
+
+/* 淺色主題：white 透明邊框 → 深色透明邊框 */
+.widget-card[data-theme="light"] .border-white\/8  { border-color: rgba(0, 0, 0, 0.12) !important; }
+.widget-card[data-theme="light"] .border-white\/10 { border-color: rgba(0, 0, 0, 0.14) !important; }
+.widget-card[data-theme="light"] .border-white\/12 { border-color: rgba(0, 0, 0, 0.16) !important; }
+.widget-card[data-theme="light"] .border-white\/15 { border-color: rgba(0, 0, 0, 0.18) !important; }
+.widget-card[data-theme="light"] .border-white\/20 { border-color: rgba(0, 0, 0, 0.22) !important; }
+.widget-card[data-theme="light"] .border-white\/25 { border-color: rgba(0, 0, 0, 0.26) !important; }
+.widget-card[data-theme="light"] .border-white\/30 { border-color: rgba(0, 0, 0, 0.30) !important; }
+.widget-card[data-theme="light"] .hover\:border-white\/20:hover { border-color: rgba(0, 0, 0, 0.22) !important; }
+.widget-card[data-theme="light"] .hover\:border-white\/25:hover { border-color: rgba(0, 0, 0, 0.26) !important; }
+.widget-card[data-theme="light"] .hover\:border-white\/30:hover { border-color: rgba(0, 0, 0, 0.30) !important; }
+.widget-card[data-theme="light"] .focus\:border-white\/25:focus { border-color: rgba(0, 0, 0, 0.26) !important; }
+
+/* 淺色主題：white 透明背景 → 深色透明背景（input / hover / 玻璃質感）*/
+.widget-card[data-theme="light"] .bg-white\/5  { background-color: rgba(0, 0, 0, 0.04) !important; }
+.widget-card[data-theme="light"] .bg-white\/8  { background-color: rgba(0, 0, 0, 0.06) !important; }
+.widget-card[data-theme="light"] .bg-white\/10 { background-color: rgba(0, 0, 0, 0.08) !important; }
+.widget-card[data-theme="light"] .bg-white\/15 { background-color: rgba(0, 0, 0, 0.10) !important; }
+.widget-card[data-theme="light"] .bg-white\/20 { background-color: rgba(0, 0, 0, 0.14) !important; }
+.widget-card[data-theme="light"] .hover\:bg-white\/10:hover { background-color: rgba(0, 0, 0, 0.08) !important; }
+.widget-card[data-theme="light"] .hover\:bg-white\/15:hover { background-color: rgba(0, 0, 0, 0.10) !important; }
+.widget-card[data-theme="light"] .focus\:bg-white\/8:focus  { background-color: rgba(0, 0, 0, 0.06) !important; }
+
+/* 淺色主題：accent tint 文字（原為 200/300 級偏亮）→ 改用 700 級深色，確保可讀 */
+.widget-card[data-theme="light"] .text-blue-300,
+.widget-card[data-theme="light"] .text-blue-200    { color: rgb(29, 78, 216)  !important; } /* blue-700 */
+.widget-card[data-theme="light"] .text-sky-300     { color: rgb(3, 105, 161)  !important; } /* sky-700 */
+.widget-card[data-theme="light"] .text-green-300   { color: rgb(21, 128, 61)  !important; } /* green-700 */
+.widget-card[data-theme="light"] .text-emerald-300 { color: rgb(4, 120, 87)   !important; } /* emerald-700 */
+.widget-card[data-theme="light"] .text-amber-300,
+.widget-card[data-theme="light"] .text-amber-200   { color: rgb(180, 83, 9)   !important; } /* amber-700 */
+.widget-card[data-theme="light"] .text-yellow-300  { color: rgb(161, 98, 7)   !important; } /* yellow-700 */
+.widget-card[data-theme="light"] .text-red-300     { color: rgb(185, 28, 28)  !important; } /* red-700 */
+.widget-card[data-theme="light"] .text-orange-300  { color: rgb(194, 65, 12)  !important; } /* orange-700 */
+
+/* 狀態徽章：雙主題色彩對比 ≥ 4.5:1（WCAG AA）
+   深色模式：半透明深底 + 淺字；淺色模式：tint-100 底 + tint-800 字 */
+.status-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+}
+
+.widget-card[data-theme="dark"] .status-healthy {
+  background-color: rgba(74, 222, 128, 0.18);
+  color: rgb(134, 239, 172);
+}
+.widget-card[data-theme="light"] .status-healthy {
+  background-color: rgb(220, 252, 231);
+  color: rgb(22, 101, 52);
+}
+
+.widget-card[data-theme="dark"] .status-thirsty {
+  background-color: rgba(234, 179, 8, 0.22);
+  color: rgb(253, 224, 71);
+}
+.widget-card[data-theme="light"] .status-thirsty {
+  background-color: rgb(254, 249, 195);
+  color: rgb(133, 77, 14);
+}
+
+.widget-card[data-theme="dark"] .status-wilting {
+  background-color: rgba(239, 68, 68, 0.22);
+  color: rgb(252, 165, 165);
+}
+.widget-card[data-theme="light"] .status-wilting {
+  background-color: rgb(254, 226, 226);
+  color: rgb(153, 27, 27);
 }
 
 /* 各區塊統一水平內距，overflow: hidden 防止區塊間內容重疊 */
 .widget-section {
-  padding-left: 8px;
-  padding-right: 8px;
+  padding-left: 10px;
+  padding-right: 10px;
   overflow: hidden;
 }
 
@@ -115,13 +238,50 @@ html, body, #root {
   cursor: grabbing;
 }
 
-/* Priority colours are now handled inline via PriorityBars SVG */
+/* ── Priority flag colours (Todo 優先度旗子) ────────────────
+   兩主題共用鮮豔 400 級填充,紅黃區分明確;淺色模式補深色 stroke 提高可見度 */
+.priority-flag-high   { color: #f87171; } /* red-400 */
+.priority-flag-medium { color: #fbbf24; } /* amber-400 */
+.priority-flag-low    { color: rgba(255, 255, 255, 0.55); }
+
+.priority-flag-high,
+.priority-flag-medium {
+  filter: drop-shadow(0 0 3px currentColor);
+}
+
+.widget-card[data-theme="light"] .priority-flag-low { color: rgba(0, 0, 0, 0.55); }
+
+.widget-card[data-theme="light"] .priority-flag-high   { stroke: #991b1b; } /* red-800 */
+.widget-card[data-theme="light"] .priority-flag-medium { stroke: #78350f; } /* amber-900 */
+.widget-card[data-theme="light"] .priority-flag-high,
+.widget-card[data-theme="light"] .priority-flag-medium {
+  filter: none;
+}
 
 /* ── Fish tank container ────────────────────────────────────── */
 .fish-tank {
   position: relative;
   overflow: hidden;
   background: var(--tank-bg, linear-gradient(to bottom, rgba(0,40,80,0.5), rgba(0,20,50,0.7)));
+  /* 橫向用負 margin + calc 寬度抵消 widget-card 的側邊 padding；底部由 widget-card:has 規則清掉 padding/border，所以不需負 margin */
+  margin: 0 -10px 0 -10px;
+  width: calc(100% + 20px);
+  border-radius: 0 0 16px 16px;
+}
+
+/* 沉積底砂：讓水族箱底部有厚度感，不會突然切斷 */
+.fish-tank::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 6px;
+  background: linear-gradient(to bottom,
+    rgba(120, 90, 50, 0) 0%,
+    rgba(90, 65, 35, 0.55) 60%,
+    rgba(60, 42, 22, 0.75) 100%);
+  pointer-events: none;
 }
 
 /* ── Fish overlay (fullscreen transparent) ─────────────────── */
@@ -131,6 +291,38 @@ html, body, #root {
   pointer-events: none;
   overflow: hidden;
   background: transparent;
+}
+
+/* ── Tooltip glass style ───────────────────────────────────── */
+/* 依 Carbon / Material / UX pattern tooltip 規範：
+   - padding 8px 12px（單行內容標準值）
+   - font-size 12px（最小可讀），line-height 1.4（避免與圓角相擠）
+   - border-radius 6px（4-8px 範圍內，短 tooltip 不顯臃腫）
+   - 深色玻璃 + 高對比白字（WCAG AA ≥ 4.5:1）
+   - 清晰的 elevation shadow */
+[data-slot="tooltip-content"].tooltip-glass {
+  padding: 7px 12px !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.01em !important;
+  color: rgba(250, 250, 252, 0.96) !important;
+  background: rgba(18, 20, 28, 0.92) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(16px) saturate(1.3);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.35),
+    0 2px 4px rgba(0, 0, 0, 0.2);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Tooltip 內如果有 <p> 元素（shadcn 預設），移除其預設 margin */
+[data-slot="tooltip-content"].tooltip-glass p {
+  margin: 0;
+  padding: 0;
 }
 
 /* ── Scrollbar styling ──────────────────────────────────────── */

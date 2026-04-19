@@ -33,17 +33,24 @@ export function FishTank({ height = 82 }: { height?: number }) {
   const fishDefs = useMemo(() => buildFishDefs(settings.enabledCreatures), [settings.enabledCreatures])
 
   useEffect(() => {
-    if (!containerRef.current) return
-    const { width } = containerRef.current.getBoundingClientRect()
-    setSize({ w: width, h: height })
-  }, [height])
+    const el = containerRef.current
+    if (!el) return
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height: h } = entry.contentRect
+        setSize({ w: width, h })
+      }
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const { renderStates, scatter } = useFishAnimation(fishDefs, size.w, size.h)
 
   return (
     <div
       ref={containerRef}
-      className="fish-tank w-full shrink-0"
+      className="fish-tank shrink-0"
       style={{ height }}
     >
       {/* Seaweed */}

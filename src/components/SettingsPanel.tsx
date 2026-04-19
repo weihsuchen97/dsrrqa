@@ -1,7 +1,14 @@
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useSettings } from '@/hooks/useSettings'
-import { CREATURE_CONFIG, PLANT_SPECIES_CONFIG, type CreatureId, type PlantSpecies } from '@/types/settings'
+import { CREATURE_CONFIG, PLANT_SPECIES_CONFIG, type CreatureId, type PlantSpecies, type ThemeMode } from '@/types/settings'
 import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
+
+const THEME_OPTIONS: { value: ThemeMode; label: string; emoji: string }[] = [
+  { value: 'dark',  label: '深色', emoji: '🌙' },
+  { value: 'light', label: '淺色', emoji: '☀️' },
+  { value: 'auto',  label: '跟隨系統', emoji: '🖥️' },
+]
 
 const ALL_CREATURES = Object.keys(CREATURE_CONFIG) as CreatureId[]
 const ALL_PLANTS = Object.keys(PLANT_SPECIES_CONFIG) as PlantSpecies[]
@@ -34,8 +41,37 @@ function SliderRow({ label, value, min, max, step, unit, onChange }: {
   )
 }
 
+function ToggleRow({ label, emoji, checked, onChange }: {
+  label: string; emoji: string; checked: boolean; onChange: (v: boolean) => void
+}) {
+  return (
+    <button
+      onClick={() => onChange(!checked)}
+      className={`flex items-center justify-between py-1.5 px-2 rounded-lg border transition-all
+        ${checked
+          ? 'bg-blue-500/20 border-blue-500/50 text-blue-300'
+          : 'bg-transparent border-white/8 text-white/40 hover:border-white/20 hover:text-white/60'
+        }`}
+    >
+      <span className="flex items-center gap-1.5">
+        <span className="text-sm">{emoji}</span>
+        <span className="text-xs">{label}</span>
+      </span>
+      <span
+        className={`relative inline-block w-7 h-4 rounded-full transition-colors
+          ${checked ? 'bg-blue-500/80' : 'bg-white/15'}`}
+      >
+        <span
+          className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all
+            ${checked ? 'left-3.5' : 'left-0.5'}`}
+        />
+      </span>
+    </button>
+  )
+}
+
 export function SettingsPanel({ onBack }: SettingsPanelProps) {
-  const { settings, setFontSize, setBrightness, setThemeLightness, setEnabledCreatures, updatePlant } = useSettings()
+  const { settings, setFontSize, setBrightness, setThemeMode, setEnabledCreatures, setShowWeather, setShowFishTank, setShowDate, updatePlant } = useSettings()
 
   function toggleCreature(id: CreatureId) {
     const current = settings.enabledCreatures
@@ -52,12 +88,22 @@ export function SettingsPanel({ onBack }: SettingsPanelProps) {
     updatePlant(prev => ({ ...prev, species }))
   }
 
+  async function handleDragStart(e: React.MouseEvent) {
+    if (e.button !== 0) return
+    e.preventDefault()
+    await getCurrentWindow().startDragging()
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Header with back button */}
-      <div className="flex items-center gap-2 px-3 py-2 shrink-0">
+      <div
+        className="flex items-center gap-2 px-3 py-2 shrink-0 cursor-grab active:cursor-grabbing select-none"
+        onMouseDown={handleDragStart}
+      >
         <button
-          onClick={onBack}
+          onClick={(e) => { e.stopPropagation(); onBack() }}
+          onMouseDown={(e) => e.stopPropagation()}
           className="w-6 h-6 rounded flex items-center justify-center text-white/50 hover:text-white/90 hover:bg-white/10 transition-all"
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -80,15 +126,59 @@ export function SettingsPanel({ onBack }: SettingsPanelProps) {
                 min={12} max={20} step={1} unit="px"
                 onChange={setFontSize}
               />
-              <SliderRow
-                label="色調（黑 ↔ 白）" value={settings.themeLightness}
-                min={0} max={100} step={5} unit="%"
-                onChange={setThemeLightness}
-              />
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs text-white/60">主題</span>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {THEME_OPTIONS.map(opt => {
+                    const active = settings.themeMode === opt.value
+                    return (
+                      <button
+                        key={opt.value}
+                        onClick={() => setThemeMode(opt.value)}
+                        className={`flex flex-col items-center gap-0.5 py-1.5 px-1 rounded-lg border transition-all text-center
+                          ${active
+                            ? 'bg-blue-500/20 border-blue-500/50 text-blue-300'
+                            : 'bg-transparent border-white/8 text-white/40 hover:border-white/20 hover:text-white/60'
+                          }`}
+                      >
+                        <span className="text-base">{opt.emoji}</span>
+                        <span className="text-[10px] leading-tight">{opt.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
               <SliderRow
                 label="亮度" value={settings.brightness}
                 min={30} max={100} step={5} unit="%"
                 onChange={setBrightness}
+              />
+            </div>
+          </div>
+
+          <Separator className="bg-white/8" />
+
+          {/* ── 元件顯示 ── */}
+          <div>
+            <h3 className="text-xs font-semibold text-white/70 mb-2">元件顯示</h3>
+            <div className="flex flex-col gap-1.5">
+              <ToggleRow
+                label="日期"
+                emoji="📅"
+                checked={settings.showDate}
+                onChange={setShowDate}
+              />
+              <ToggleRow
+                label="天氣"
+                emoji="🌤️"
+                checked={settings.showWeather}
+                onChange={setShowWeather}
+              />
+              <ToggleRow
+                label="水族箱"
+                emoji="🐠"
+                checked={settings.showFishTank}
+                onChange={setShowFishTank}
               />
             </div>
           </div>

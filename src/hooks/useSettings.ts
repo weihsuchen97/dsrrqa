@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, createContext, useContext } from 'react'
 import { load, type Store } from '@tauri-apps/plugin-store'
-import type { AppSettings, PlantState, CreatureId, SectionHeights } from '../types/settings'
+import type { AppSettings, PlantState, CreatureId, SectionHeights, ThemeMode } from '../types/settings'
 import { DEFAULT_SETTINGS } from '../types/settings'
 
 interface SettingsContextValue {
@@ -8,9 +8,12 @@ interface SettingsContextValue {
   loaded: boolean
   setFontSize: (v: number) => void
   setBrightness: (v: number) => void
-  setThemeLightness: (v: number) => void
+  setThemeMode: (v: ThemeMode) => void
   setSectionHeights: (v: SectionHeights) => void
   setEnabledCreatures: (v: CreatureId[]) => void
+  setShowWeather: (v: boolean) => void
+  setShowFishTank: (v: boolean) => void
+  setShowDate: (v: boolean) => void
   updatePlant: (updater: (prev: PlantState) => PlantState) => void
 }
 
@@ -30,11 +33,15 @@ export function useSettingsProvider() {
       try {
         const store = await load('settings.json', { autoSave: false, defaults: { settings: DEFAULT_SETTINGS } })
         storeRef.current = store
-        const saved = await store.get<AppSettings>('settings')
+        const saved = await store.get<AppSettings & { themeLightness?: number }>('settings')
         if (saved) {
+          // Migration: themeLightness (0-100) → themeMode ('dark' | 'light')
+          const migratedMode: ThemeMode = saved.themeMode
+            ?? (typeof saved.themeLightness === 'number' && saved.themeLightness >= 50 ? 'light' : 'dark')
           setSettings({
             ...DEFAULT_SETTINGS,
             ...saved,
+            themeMode: migratedMode,
             sectionHeights: { ...DEFAULT_SETTINGS.sectionHeights, ...saved.sectionHeights },
             plant: { ...DEFAULT_SETTINGS.plant, ...saved.plant },
           })
@@ -63,9 +70,12 @@ export function useSettingsProvider() {
 
   const setFontSize = useCallback((v: number) => update({ fontSize: Math.max(12, Math.min(20, v)) }), [update])
   const setBrightness = useCallback((v: number) => update({ brightness: Math.max(30, Math.min(100, v)) }), [update])
-  const setThemeLightness = useCallback((v: number) => update({ themeLightness: Math.max(0, Math.min(100, v)) }), [update])
+  const setThemeMode = useCallback((v: ThemeMode) => update({ themeMode: v }), [update])
   const setSectionHeights = useCallback((v: SectionHeights) => update({ sectionHeights: v }), [update])
   const setEnabledCreatures = useCallback((v: CreatureId[]) => update({ enabledCreatures: v }), [update])
+  const setShowWeather = useCallback((v: boolean) => update({ showWeather: v }), [update])
+  const setShowFishTank = useCallback((v: boolean) => update({ showFishTank: v }), [update])
+  const setShowDate = useCallback((v: boolean) => update({ showDate: v }), [update])
 
   const updatePlant = useCallback((updater: (prev: PlantState) => PlantState) => {
     setSettings(prev => {
@@ -80,9 +90,12 @@ export function useSettingsProvider() {
     loaded,
     setFontSize,
     setBrightness,
-    setThemeLightness,
+    setThemeMode,
     setSectionHeights,
     setEnabledCreatures,
+    setShowWeather,
+    setShowFishTank,
+    setShowDate,
     updatePlant,
   }
 }

@@ -5,6 +5,8 @@ export type CreatureId =
 
 export type PlantSpecies = 'succulent' | 'sunflower' | 'sakura' | 'cactus' | 'bonsai'
 
+export type ThemeMode = 'dark' | 'light' | 'auto'
+
 export interface PlantState {
   species: PlantSpecies
   experience: number    // 0–100, drives growth stage
@@ -25,10 +27,13 @@ export interface SectionHeights {
 export interface AppSettings {
   fontSize: number           // 12–20
   brightness: number         // 30–100 (percentage)
-  themeLightness: number     // 0–100 (0=black/dark, 100=white/light)
+  themeMode: ThemeMode       // 'dark' | 'light' | 'auto'
   sectionHeights: SectionHeights
   enabledCreatures: CreatureId[]
   plant: PlantState
+  showWeather: boolean
+  showFishTank: boolean
+  showDate: boolean
 }
 
 export const DEFAULT_PLANT: PlantState = {
@@ -44,15 +49,18 @@ export const DEFAULT_PLANT: PlantState = {
 export const DEFAULT_SETTINGS: AppSettings = {
   fontSize: 14,
   brightness: 100,
-  themeLightness: 0,
+  themeMode: 'dark',
   sectionHeights: {
-    plant: 130,
-    weather: 52,
+    plant: 148,
+    weather: 56,
     todo: 1,
     fish: 82,
   },
   enabledCreatures: ['fish-tropical', 'fish-blowfish', 'fish-angel', 'fish-clown'],
   plant: DEFAULT_PLANT,
+  showWeather: true,
+  showFishTank: true,
+  showDate: true,
 }
 
 export const PLANT_SPECIES_CONFIG: Record<PlantSpecies, { name: string; emoji: string }> = {

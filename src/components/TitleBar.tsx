@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -6,9 +7,46 @@ interface TitleBarProps {
   fishActive: boolean
   onFishToggle: () => void
   onSettingsToggle?: () => void
+  notepadActive?: boolean
+  onNotepadToggle?: () => void
+  showDate?: boolean
 }
 
-export function TitleBar({ fishActive, onFishToggle, onSettingsToggle }: TitleBarProps) {
+const WEEKDAY_ZH = ['日', '一', '二', '三', '四', '五', '六']
+
+function formatDate(d: Date) {
+  return `${d.getMonth() + 1}月${d.getDate()}日 週${WEEKDAY_ZH[d.getDay()]}`
+}
+
+function msUntilNextMidnight() {
+  const now = new Date()
+  const next = new Date(now)
+  next.setHours(24, 0, 0, 50) // 多 50ms 緩衝，確保跨進下一天
+  return next.getTime() - now.getTime()
+}
+
+function useTodayLabel() {
+  const [label, setLabel] = useState(() => formatDate(new Date()))
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>
+    const refresh = () => {
+      setLabel(formatDate(new Date()))
+      timer = setTimeout(refresh, msUntilNextMidnight())
+    }
+    timer = setTimeout(refresh, msUntilNextMidnight())
+    // 睡眠/喚醒、重新聚焦時補一次校正
+    const onFocus = () => setLabel(formatDate(new Date()))
+    window.addEventListener('focus', onFocus)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [])
+  return label
+}
+
+export function TitleBar({ fishActive, onFishToggle, onSettingsToggle, notepadActive, onNotepadToggle, showDate }: TitleBarProps) {
+  const dateLabel = useTodayLabel()
   async function handleDragStart(e: React.MouseEvent) {
     if (e.button !== 0) return
     e.preventDefault()
@@ -31,14 +69,45 @@ export function TitleBar({ fishActive, onFishToggle, onSettingsToggle }: TitleBa
       className="flex items-center justify-between px-3 py-2 shrink-0 cursor-grab active:cursor-grabbing select-none"
       onMouseDown={handleDragStart}
     >
-      <span className="text-xs font-semibold tracking-widest text-white/50">
-        DSRRQA
-      </span>
+      <div className="flex items-baseline gap-2 min-w-0">
+        <span className="text-[11px] font-semibold tracking-widest text-white/55 uppercase">
+          DSRRQA
+        </span>
+        {showDate && (
+          <span className="text-[11px] text-white/45 truncate">
+            {dateLabel}
+          </span>
+        )}
+      </div>
 
       <div
-        className="flex items-center gap-1"
+        className="flex items-center gap-1.5"
         onMouseDown={(e) => e.stopPropagation()}
       >
+        {/* Notepad toggle */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={(e) => { e.stopPropagation(); onNotepadToggle?.() }}
+              className={`w-6 h-6 rounded flex items-center justify-center transition-all
+                ${notepadActive
+                  ? 'bg-amber-400/25 text-amber-200'
+                  : 'text-white/40 hover:text-white/80 hover:bg-white/10'
+                }`}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="8" y1="13" x2="16" y2="13" />
+                <line x1="8" y1="17" x2="13" y2="17" />
+              </svg>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            <p>{notepadActive ? '切換到待辦事項' : '切換到記事本'}</p>
+          </TooltipContent>
+        </Tooltip>
+
         {/* Settings */}
         <Tooltip>
           <TooltipTrigger asChild>

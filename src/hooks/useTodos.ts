@@ -37,7 +37,7 @@ export function useTodos() {
         completed: false,
         createdAt: new Date().toISOString(),
       }
-      const next = [item, ...todos]
+      const next = [...todos, item]
       setTodos(next)
       await persist(next)
     },
@@ -46,9 +46,15 @@ export function useTodos() {
 
   const toggleTodo = useCallback(
     async (id: string) => {
-      const next = todos.map((t) =>
-        t.id === id ? { ...t, completed: !t.completed } : t
-      )
+      const next = todos.map((t) => {
+        if (t.id !== id) return t
+        const completed = !t.completed
+        return {
+          ...t,
+          completed,
+          completedAt: completed ? new Date().toISOString() : undefined,
+        }
+      })
       setTodos(next)
       await persist(next)
     },
@@ -69,6 +75,15 @@ export function useTodos() {
       const trimmed = newTitle.trim()
       if (!trimmed) return
       const next = todos.map((t) => t.id === id ? { ...t, title: trimmed } : t)
+      setTodos(next)
+      await persist(next)
+    },
+    [todos, persist]
+  )
+
+  const setTodoPriority = useCallback(
+    async (id: string, priority: TodoItem['priority']) => {
+      const next = todos.map((t) => t.id === id ? { ...t, priority } : t)
       setTodos(next)
       await persist(next)
     },
@@ -112,5 +127,5 @@ export function useTodos() {
   const done = todos.filter((t) => t.completed).length
   const completionRate = total === 0 ? 0 : done / total
 
-  return { todos, loaded, addTodo, toggleTodo, deleteTodo, editTodo, editAndInsertAfter, reorderTodos, completionRate, total, done }
+  return { todos, loaded, addTodo, toggleTodo, deleteTodo, editTodo, setTodoPriority, editAndInsertAfter, reorderTodos, completionRate, total, done }
 }
