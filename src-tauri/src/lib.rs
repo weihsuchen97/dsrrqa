@@ -8,26 +8,35 @@ use tauri::{
 #[cfg(windows)]
 mod hook {
     use std::sync::OnceLock;
-    use std::sync::atomic::{AtomicU32, Ordering};
+    use std::sync::atomic::{AtomicU32, AtomicI32, AtomicU64, Ordering};
     use std::ptr;
     use tauri::Emitter;
     use winapi::um::winuser::*;
 
     static APP_HANDLE: OnceLock<tauri::AppHandle> = OnceLock::new();
     static HOOK_THREAD_ID: AtomicU32 = AtomicU32::new(0);
+    // 螢幕偏移量（實體像素）與縮放比，用來把全域座標轉成 overlay-local 邏輯座標
+    static MONITOR_X: AtomicI32 = AtomicI32::new(0);
+    static MONITOR_Y: AtomicI32 = AtomicI32::new(0);
+    static MONITOR_SCALE: AtomicU64 = AtomicU64::new(0);
 
     // HHOOK 是原始指標，需要 newtype 讓它可以跨執行緒傳遞
     struct HookPtr(*mut winapi::shared::windef::HHOOK__);
     unsafe impl Send for HookPtr {}
 
     #[derive(serde::Serialize, Clone)]
-    struct Payload { x: i32, y: i32 }
+    struct Payload { x: f64, y: f64 }
 
     unsafe extern "system" fn mouse_proc(n_code: i32, w_param: usize, l_param: isize) -> isize {
         if n_code >= 0 && w_param == WM_LBUTTONDOWN as usize {
             let ms = &*(l_param as *const MSLLHOOKSTRUCT);
             if let Some(app) = APP_HANDLE.get() {
-                let _ = app.emit("fish-click", Payload { x: ms.pt.x, y: ms.pt.y });
+                let ox = MONITOR_X.load(Ordering::Relaxed);
+                let oy = MONITOR_Y.load(Ordering::Relaxed);
+                let scale = f64::from_bits(MONITOR_SCALE.load(Ordering::Relaxed));
+                let x = (ms.pt.x - ox) as f64 / scale;
+                let y = (ms.pt.y - oy) as f64 / scale;
+                let _ = app.emit("fish-click", Payload { x, y });
             }
         }
         CallNextHookEx(ptr::null_mut(), n_code, w_param, l_param)
@@ -35,6 +44,12 @@ mod hook {
 
     pub fn init(app: tauri::AppHandle) {
         let _ = APP_HANDLE.set(app);
+    }
+
+    pub fn set_monitor(x: i32, y: i32, scale: f64) {
+        MONITOR_X.store(x, Ordering::Relaxed);
+        MONITOR_Y.store(y, Ordering::Relaxed);
+        MONITOR_SCALE.store(scale.to_bits(), Ordering::Relaxed);
     }
 
     pub fn install() {
@@ -112,6 +127,7 @@ async fn create_overlay_window(app: tauri::AppHandle) -> Result<(), String> {
 
     let pos = monitor.position();
     let size = monitor.size();
+    let scale = monitor.scale_factor();
 
     let window = WebviewWindowBuilder::new(
         &app,
@@ -122,7 +138,7 @@ async fn create_overlay_window(app: tauri::AppHandle) -> Result<(), String> {
     .decorations(false)
     .always_on_top(true)
     .skip_taskbar(true)
-    .inner_size(size.width as f64, size.height as f64)
+    .inner_size(size.width as f64 / scale, size.height as f64 / scale)
     .position(pos.x as f64, pos.y as f64)
     .build()
     .map_err(|e| e.to_string())?;
@@ -133,7 +149,10 @@ async fn create_overlay_window(app: tauri::AppHandle) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
 
     #[cfg(windows)]
-    hook::install();
+    {
+        hook::set_monitor(pos.x, pos.y, scale);
+        hook::install();
+    }
 
     Ok(())
 }
