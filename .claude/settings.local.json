@@ -33,7 +33,9 @@
       "Bash(export PATH=\"$HOME/.cargo/bin:$PATH\")",
       "Bash(cargo clean:*)",
       "Bash(node -e \"const w = require\\('@tauri-apps/api/window'\\); console.log\\(Object.keys\\(w\\).filter\\(k => k.toLowerCase\\(\\).includes\\('resize'\\)\\)\\)\")",
-      "Bash(grep -l \"startResizeDragging\" node_modules/@tauri-apps/api/**/*.d.ts)"
+      "Bash(grep -l \"startResizeDragging\" node_modules/@tauri-apps/api/**/*.d.ts)",
+      "Bash(git ls-tree *)",
+      "Bash(git pull *)"
     ]
   }
 }
