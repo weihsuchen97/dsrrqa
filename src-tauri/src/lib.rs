@@ -4,43 +4,25 @@ use tauri::{
     Manager, WebviewUrl, WebviewWindowBuilder,
 };
 
-// ── Windows 全域滑鼠鉤子（全螢幕模式點擊觸發魚逃跑）────────────────────────
-#[cfg(windows)]
+// ── 跨平台全域滑鼠鉤子（Windows/macOS，全螢幕模式點擊觸發魚逃跑）────────────
 mod hook {
     use std::sync::OnceLock;
-    use std::sync::atomic::{AtomicU32, AtomicI32, AtomicU64, Ordering};
-    use std::ptr;
+    use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU64, Ordering};
     use tauri::Emitter;
-    use winapi::um::winuser::*;
+    use rdev::{listen, Event, EventType, Button};
 
     static APP_HANDLE: OnceLock<tauri::AppHandle> = OnceLock::new();
-    static HOOK_THREAD_ID: AtomicU32 = AtomicU32::new(0);
+    static ACTIVE: AtomicBool = AtomicBool::new(false);
     // 螢幕偏移量（實體像素）與縮放比，用來把全域座標轉成 overlay-local 邏輯座標
     static MONITOR_X: AtomicI32 = AtomicI32::new(0);
     static MONITOR_Y: AtomicI32 = AtomicI32::new(0);
     static MONITOR_SCALE: AtomicU64 = AtomicU64::new(0);
-
-    // HHOOK 是原始指標，需要 newtype 讓它可以跨執行緒傳遞
-    struct HookPtr(*mut winapi::shared::windef::HHOOK__);
-    unsafe impl Send for HookPtr {}
+    // 追蹤最後已知滑鼠位置（rdev ButtonPress 不帶座標）
+    static MOUSE_X: AtomicU64 = AtomicU64::new(0);
+    static MOUSE_Y: AtomicU64 = AtomicU64::new(0);
 
     #[derive(serde::Serialize, Clone)]
     struct Payload { x: f64, y: f64 }
-
-    unsafe extern "system" fn mouse_proc(n_code: i32, w_param: usize, l_param: isize) -> isize {
-        if n_code >= 0 && w_param == WM_LBUTTONDOWN as usize {
-            let ms = &*(l_param as *const MSLLHOOKSTRUCT);
-            if let Some(app) = APP_HANDLE.get() {
-                let ox = MONITOR_X.load(Ordering::Relaxed);
-                let oy = MONITOR_Y.load(Ordering::Relaxed);
-                let scale = f64::from_bits(MONITOR_SCALE.load(Ordering::Relaxed));
-                let x = (ms.pt.x - ox) as f64 / scale;
-                let y = (ms.pt.y - oy) as f64 / scale;
-                let _ = app.emit("fish-click", Payload { x, y });
-            }
-        }
-        CallNextHookEx(ptr::null_mut(), n_code, w_param, l_param)
-    }
 
     pub fn init(app: tauri::AppHandle) {
         let _ = APP_HANDLE.set(app);
@@ -53,30 +35,39 @@ mod hook {
     }
 
     pub fn install() {
-        if HOOK_THREAD_ID.load(Ordering::Relaxed) != 0 {
-            return; // 已安裝，不重複
-        }
-        std::thread::spawn(|| unsafe {
-            let hook = SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_proc), ptr::null_mut(), 0);
-            if hook.is_null() { return; }
-            let tid = winapi::um::processthreadsapi::GetCurrentThreadId();
-            HOOK_THREAD_ID.store(tid, Ordering::Relaxed);
-            let hook_ptr = HookPtr(hook);
-            let mut msg: MSG = std::mem::zeroed();
-            while GetMessageW(&mut msg, ptr::null_mut(), 0, 0) > 0 {
-                TranslateMessage(&msg);
-                DispatchMessageW(&msg);
-            }
-            UnhookWindowsHookEx(hook_ptr.0);
-            HOOK_THREAD_ID.store(0, Ordering::Relaxed);
+        if ACTIVE.swap(true, Ordering::Relaxed) { return; }
+        std::thread::spawn(|| {
+            let _ = listen(move |event: Event| {
+                match event.event_type {
+                    EventType::MouseMove { x, y } => {
+                        MOUSE_X.store(x.to_bits(), Ordering::Relaxed);
+                        MOUSE_Y.store(y.to_bits(), Ordering::Relaxed);
+                    }
+                    EventType::ButtonPress(Button::Left) => {
+                        if !ACTIVE.load(Ordering::Relaxed) { return; }
+                        if let Some(app) = APP_HANDLE.get() {
+                            let ox = MONITOR_X.load(Ordering::Relaxed);
+                            let oy = MONITOR_Y.load(Ordering::Relaxed);
+                            let scale = f64::from_bits(MONITOR_SCALE.load(Ordering::Relaxed));
+                            let mx = f64::from_bits(MOUSE_X.load(Ordering::Relaxed));
+                            let my = f64::from_bits(MOUSE_Y.load(Ordering::Relaxed));
+                            // Windows: rdev 給實體像素，需減偏移再除以 scale
+                            // macOS:   rdev 給邏輯點，需減邏輯偏移（offset / scale）
+                            #[cfg(target_os = "windows")]
+                            let (x, y) = ((mx - ox as f64) / scale, (my - oy as f64) / scale);
+                            #[cfg(not(target_os = "windows"))]
+                            let (x, y) = (mx - ox as f64 / scale, my - oy as f64 / scale);
+                            let _ = app.emit("fish-click", Payload { x, y });
+                        }
+                    }
+                    _ => {}
+                }
+            });
         });
     }
 
     pub fn uninstall() {
-        let tid = HOOK_THREAD_ID.load(Ordering::Relaxed);
-        if tid != 0 {
-            unsafe { PostThreadMessageW(tid, WM_QUIT, 0, 0); }
-        }
+        ACTIVE.store(false, Ordering::Relaxed);
     }
 }
 
@@ -84,7 +75,6 @@ fn close_overlay(app: &tauri::AppHandle) {
     if let Some(overlay) = app.get_webview_window("overlay") {
         let _ = overlay.close();
     }
-    #[cfg(windows)]
     hook::uninstall();
 }
 
@@ -148,11 +138,8 @@ async fn create_overlay_window(app: tauri::AppHandle) -> Result<(), String> {
         .set_ignore_cursor_events(true)
         .map_err(|e| e.to_string())?;
 
-    #[cfg(windows)]
-    {
-        hook::set_monitor(pos.x, pos.y, scale);
-        hook::install();
-    }
+    hook::set_monitor(pos.x, pos.y, scale);
+    hook::install();
 
     Ok(())
 }
@@ -177,7 +164,6 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
             // 初始化滑鼠鉤子的 AppHandle（鉤子只在開啟 overlay 時才安裝）
-            #[cfg(windows)]
             hook::init(app.handle().clone());
 
             // 修正 C：托盤選單簡化為「顯示 / 關閉」
@@ -204,11 +190,15 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            // 主視窗關閉請求時同步關閉 overlay
+            // 按 X 時隱藏到托盤，而非真正關閉
             if let Some(main_win) = app.get_webview_window("main") {
                 let app_handle = app.handle().clone();
                 main_win.on_window_event(move |event| {
-                    if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        api.prevent_close();
+                        if let Some(win) = app_handle.get_webview_window("main") {
+                            let _ = win.hide();
+                        }
                         close_overlay(&app_handle);
                     }
                 });
@@ -223,6 +213,12 @@ pub fn run() {
             destroy_overlay_window,
             check_overlay_exists,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while running tauri application")
+        .run(|app_handle, event| {
+            // macOS：點擊 Dock 圖示時，恢復顯示主視窗
+            if let tauri::RunEvent::Reopen { .. } = event {
+                show_and_focus(app_handle);
+            }
+        });
 }
