@@ -88,7 +88,7 @@ export function NotepadPanel({ content, onContentChange }: NotepadPanelProps) {
         </div>
       </div>
 
-      <Separator className="bg-white/8 my-1.5 shrink-0" />
+      <Separator className="bg-white/15 my-1.5 shrink-0" />
 
       <div className="flex-1 min-h-0 pb-2">
         <textarea
@@ -98,11 +98,11 @@ export function NotepadPanel({ content, onContentChange }: NotepadPanelProps) {
           onPaste={handlePaste}
           spellCheck={false}
           placeholder="貼上文字會自動去除字型/顏色格式，只保留列表、粗體等結構…"
-          className="w-full h-full resize-none bg-white/5 rounded-none px-6 py-3.5
-            text-[13px] leading-6 text-white/85 placeholder:text-white/30
+          className="w-full h-full resize-none bg-white/5 rounded-none
+            text-xs leading-5 text-white/85 placeholder:text-white/30
             outline-none focus:bg-white/8 transition-colors
             font-mono"
-          style={{ fontFamily: "'Geist Mono', ui-monospace, monospace" }}
+          style={{ fontFamily: "'Geist Mono', ui-monospace, monospace", padding: '14px 24px' }}
         />
       </div>
     </div>
