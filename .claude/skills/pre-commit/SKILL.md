@@ -47,7 +47,22 @@ npx tsc --noEmit
 
 有違規 → 列出，提示修正；使用者確認修好後繼續。
 
-### Step 3 — Dev Server 啟動驗證
+### Step 3 — Rust 後端編譯檢查
+
+執行：
+```bash
+cd src-tauri && cargo check 2>&1
+```
+
+- 若有錯誤（`error[...]`）→ **停在這裡**，列出錯誤並提示修正，修好後再繼續。
+- 若只有 warning → ✅ 繼續（但列出 warning 供參考）。
+- 若無錯誤 → ✅ 繼續。
+
+> **為何需要這步**：`tsc` 只驗證前端 TypeScript，Rust 後端的編譯錯誤（如
+> 平台限定 API、型別不符、trait 未實作）完全不會被前端 build 發現。
+> 曾發生 `RunEvent::Reopen` 在 Windows 不存在，但前端測試全過的案例。
+
+### Step 4 — Dev Server 啟動驗證
 
 在背景啟動 dev server 並確認是否能正常運行：
 
@@ -71,7 +86,7 @@ timeout 30 npm run dev 2>&1 | head -40
 > 曾發生過 Tauri plugin import 錯誤、動態 import 路徑問題等，
 > 只有實際啟動才能發現。
 
-### Step 4 — REQUIREMENTS.md 更新確認
+### Step 5 — REQUIREMENTS.md 更新確認
 
 讀取 `REQUIREMENTS.md`，對照本次修改的功能：
 
@@ -79,13 +94,14 @@ timeout 30 npm run dev 2>&1 | head -40
 - 若修正 bug → 確認是否已在「已修正的錯誤」表格更新狀態為 ✅
 - 若兩者均無 → 提示「這次改動需要更新 REQUIREMENTS.md 嗎？」
 
-### Step 5 — 全部通過，引導 commit
+### Step 6 — 全部通過，引導 commit
 
 輸出摘要：
 
 ```
 ✅ TypeScript 型別檢查通過
 ✅ 設計規範審查通過（或：已修正 N 個違規）
+✅ Rust 後端編譯通過
 ✅ Dev server 啟動正常
 ✅ REQUIREMENTS.md 已更新
 
@@ -96,5 +112,5 @@ timeout 30 npm run dev 2>&1 | head -40
 
 ## 快速跳過
 
-若使用者明確說「跳過 dev server 檢查」，可省略 Step 3，
+若使用者明確說「跳過 dev server 檢查」，可省略 Step 4，
 但必須在輸出中標記 `⚠️ Dev server 啟動未驗證`。

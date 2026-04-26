@@ -215,10 +215,10 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
-        .run(|app_handle, event| {
-            // macOS：點擊 Dock 圖示時，恢復顯示主視窗
-            if let tauri::RunEvent::Reopen { .. } = event {
-                show_and_focus(app_handle);
+        .run(|_app_handle, _event| {
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { .. } = _event {
+                show_and_focus(_app_handle);
             }
         });
 }
