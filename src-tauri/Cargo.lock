@@ -896,7 +896,11 @@ dependencies = [
 
 [[package]]
 name = "dsrrqa"
+<<<<<<< HEAD
 version = "0.2.5"
+=======
+version = "0.2.6"
+>>>>>>> 9b7c27e0ef3f0d8de3c119e3ad41be44395e55ab
 dependencies = [
  "rdev",
  "serde",
