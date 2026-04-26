@@ -15,4 +15,13 @@ let cargo = readFileSync(cargoPath, 'utf-8')
 cargo = cargo.replace(/^version = ".*"$/m, `version = "${version}"`)
 writeFileSync(cargoPath, cargo)
 
-console.log(`Synced version ${version} → Cargo.toml`)
+// Sync to Cargo.lock (update only the dsrrqa package entry)
+const lockPath = resolve(root, 'src-tauri/Cargo.lock')
+let lock = readFileSync(lockPath, 'utf-8')
+lock = lock.replace(
+  /(name = "dsrrqa"\nversion = )"[^"]*"/,
+  `$1"${version}"`
+)
+writeFileSync(lockPath, lock)
+
+console.log(`Synced version ${version} → Cargo.toml, Cargo.lock`)
