@@ -96,6 +96,16 @@ function TodoRow({ item, isEditing, onToggle, onDelete, onStartEdit, onFinishEdi
         className="shrink-0 border-white/30 data-[state=checked]:bg-white/70"
       />
 
+      {/* Priority flag — 移至 checkbox 右側，點擊切換優先度 */}
+      <button
+        type="button"
+        title={`${PRIORITY_TOOLTIP[item.priority]}（點擊切換）`}
+        onClick={() => onSetPriority(item.id, PRIORITY_CYCLE[item.priority])}
+        className="inline-flex items-center justify-center w-6 h-6 rounded-md shrink-0 hover:bg-white/10 transition-colors"
+      >
+        <PriorityFlag priority={item.priority} />
+      </button>
+
       {isEditing ? (
         <input
           autoFocus
@@ -130,15 +140,6 @@ function TodoRow({ item, isEditing, onToggle, onDelete, onStartEdit, onFinishEdi
           {item.externalKey}
         </span>
       )}
-
-      <button
-        type="button"
-        title={`${PRIORITY_TOOLTIP[item.priority]}（點擊切換）`}
-        onClick={() => onSetPriority(item.id, PRIORITY_CYCLE[item.priority])}
-        className="inline-flex items-center justify-center w-7 h-7 rounded-md shrink-0 hover:bg-white/10 transition-colors"
-      >
-        <PriorityFlag priority={item.priority} />
-      </button>
 
       <AnimatePresence>
         {hovered && !isEditing && (

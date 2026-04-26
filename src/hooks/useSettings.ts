@@ -14,6 +14,11 @@ interface SettingsContextValue {
   setShowWeather: (v: boolean) => void
   setShowFishTank: (v: boolean) => void
   setShowDate: (v: boolean) => void
+  setShowPomodoro: (v: boolean) => void
+  setPomodoroWorkMinutes: (v: number) => void
+  setPomodoroShortBreakMinutes: (v: number) => void
+  setPomodoroLongBreakMinutes: (v: number) => void
+  setPomodoroSessionsPerLongBreak: (v: number) => void
   updatePlant: (updater: (prev: PlantState) => PlantState) => void
 }
 
@@ -76,6 +81,11 @@ export function useSettingsProvider() {
   const setShowWeather = useCallback((v: boolean) => update({ showWeather: v }), [update])
   const setShowFishTank = useCallback((v: boolean) => update({ showFishTank: v }), [update])
   const setShowDate = useCallback((v: boolean) => update({ showDate: v }), [update])
+  const setShowPomodoro = useCallback((v: boolean) => update({ showPomodoro: v }), [update])
+  const setPomodoroWorkMinutes = useCallback((v: number) => update({ pomodoroWorkMinutes: Math.max(5, Math.min(60, v)) }), [update])
+  const setPomodoroShortBreakMinutes = useCallback((v: number) => update({ pomodoroShortBreakMinutes: Math.max(1, Math.min(30, v)) }), [update])
+  const setPomodoroLongBreakMinutes = useCallback((v: number) => update({ pomodoroLongBreakMinutes: Math.max(5, Math.min(60, v)) }), [update])
+  const setPomodoroSessionsPerLongBreak = useCallback((v: number) => update({ pomodoroSessionsPerLongBreak: Math.max(2, Math.min(8, v)) }), [update])
 
   const updatePlant = useCallback((updater: (prev: PlantState) => PlantState) => {
     setSettings(prev => {
@@ -96,6 +106,11 @@ export function useSettingsProvider() {
     setShowWeather,
     setShowFishTank,
     setShowDate,
+    setShowPomodoro,
+    setPomodoroWorkMinutes,
+    setPomodoroShortBreakMinutes,
+    setPomodoroLongBreakMinutes,
+    setPomodoroSessionsPerLongBreak,
     updatePlant,
   }
 }

@@ -71,7 +71,7 @@ function ToggleRow({ label, emoji, checked, onChange }: {
 }
 
 export function SettingsPanel({ onBack }: SettingsPanelProps) {
-  const { settings, setFontSize, setBrightness, setThemeMode, setEnabledCreatures, setShowWeather, setShowFishTank, setShowDate, updatePlant } = useSettings()
+  const { settings, setFontSize, setBrightness, setThemeMode, setEnabledCreatures, setShowWeather, setShowFishTank, setShowDate, setShowPomodoro, setPomodoroWorkMinutes, setPomodoroShortBreakMinutes, setPomodoroLongBreakMinutes, setPomodoroSessionsPerLongBreak, updatePlant } = useSettings()
 
   function toggleCreature(id: CreatureId) {
     const current = settings.enabledCreatures
@@ -180,8 +180,50 @@ export function SettingsPanel({ onBack }: SettingsPanelProps) {
                 checked={settings.showFishTank}
                 onChange={setShowFishTank}
               />
+              <ToggleRow
+                label="番茄鐘"
+                emoji="🍅"
+                checked={settings.showPomodoro}
+                onChange={setShowPomodoro}
+              />
             </div>
           </div>
+
+          {/* ── 番茄鐘設定 ── */}
+          {settings.showPomodoro && (
+            <>
+              <Separator className="bg-white/8" />
+              <div>
+                <h3 className="text-xs font-semibold text-white/70 mb-2">🍅 番茄鐘時間</h3>
+                <div className="flex flex-col gap-3">
+                  <SliderRow
+                    label="工作時間"
+                    value={settings.pomodoroWorkMinutes}
+                    min={5} max={60} step={5} unit=" 分鐘"
+                    onChange={setPomodoroWorkMinutes}
+                  />
+                  <SliderRow
+                    label="短休息"
+                    value={settings.pomodoroShortBreakMinutes}
+                    min={1} max={30} step={1} unit=" 分鐘"
+                    onChange={setPomodoroShortBreakMinutes}
+                  />
+                  <SliderRow
+                    label="長休息"
+                    value={settings.pomodoroLongBreakMinutes}
+                    min={5} max={60} step={5} unit=" 分鐘"
+                    onChange={setPomodoroLongBreakMinutes}
+                  />
+                  <SliderRow
+                    label="長休息間隔"
+                    value={settings.pomodoroSessionsPerLongBreak}
+                    min={2} max={8} step={1} unit=" 個番茄"
+                    onChange={setPomodoroSessionsPerLongBreak}
+                  />
+                </div>
+              </div>
+            </>
+          )}
 
           <Separator className="bg-white/8" />
 

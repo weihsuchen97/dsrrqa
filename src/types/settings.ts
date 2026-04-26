@@ -34,6 +34,11 @@ export interface AppSettings {
   showWeather: boolean
   showFishTank: boolean
   showDate: boolean
+  showPomodoro: boolean
+  pomodoroWorkMinutes: number
+  pomodoroShortBreakMinutes: number
+  pomodoroLongBreakMinutes: number
+  pomodoroSessionsPerLongBreak: number
 }
 
 export const DEFAULT_PLANT: PlantState = {
@@ -61,6 +66,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
   showWeather: true,
   showFishTank: true,
   showDate: true,
+  showPomodoro: false,
+  pomodoroWorkMinutes: 25,
+  pomodoroShortBreakMinutes: 5,
+  pomodoroLongBreakMinutes: 15,
+  pomodoroSessionsPerLongBreak: 4,
 }
 
 export const PLANT_SPECIES_CONFIG: Record<PlantSpecies, { name: string; emoji: string }> = {

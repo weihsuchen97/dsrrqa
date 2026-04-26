@@ -1,7 +1,7 @@
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{TrayIconBuilder, TrayIconEvent},
-    Manager, WebviewUrl, WebviewWindowBuilder,
+    Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindowBuilder,
 };
 
 // ── 跨平台全域滑鼠鉤子（Windows/macOS，全螢幕模式點擊觸發魚逃跑）────────────
@@ -71,6 +71,19 @@ mod hook {
     }
 }
 
+/// WM_DPICHANGED 在 Windows 高 DPI 環境下，視窗移到不同 scale 螢幕時
+/// TAO 會自動依比例縮放視窗，蓋掉我們設定的 set_size。
+/// 此函式在 150ms 後再強制套用正確的實體像素大小，確保覆蓋全螢幕。
+fn schedule_overlay_geometry(app: tauri::AppHandle, x: i32, y: i32, w: u32, h: u32) {
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(150));
+        if let Some(win) = app.get_webview_window("overlay") {
+            let _ = win.set_position(PhysicalPosition::new(x, y));
+            let _ = win.set_size(PhysicalSize::new(w, h));
+        }
+    });
+}
+
 fn close_overlay(app: &tauri::AppHandle) {
     if let Some(overlay) = app.get_webview_window("overlay") {
         let _ = overlay.close();
@@ -98,13 +111,16 @@ async fn quit_app(app: tauri::AppHandle) {
 }
 
 #[tauri::command]
-async fn create_overlay_window(app: tauri::AppHandle) -> Result<(), String> {
-    if let Some(overlay) = app.get_webview_window("overlay") {
-        overlay.show().map_err(|e| e.to_string())?;
-        return Ok(());
+async fn hide_main_window(app: tauri::AppHandle) {
+    close_overlay(&app);
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.hide();
     }
+}
 
-    // 取得主視窗所在螢幕（支援雙螢幕）
+#[tauri::command]
+async fn create_overlay_window(app: tauri::AppHandle) -> Result<(), String> {
+    // 先取得主視窗目前所在螢幕（每次呼叫都重新偵測，支援切換螢幕）
     let main_win = app
         .get_webview_window("main")
         .ok_or("main window not found")?;
@@ -115,10 +131,27 @@ async fn create_overlay_window(app: tauri::AppHandle) -> Result<(), String> {
         .or_else(|| app.primary_monitor().ok().flatten())
         .ok_or("no monitor found")?;
 
-    let pos = monitor.position();
-    let size = monitor.size();
+    let x = monitor.position().x;
+    let y = monitor.position().y;
+    let w = monitor.size().width;
+    let h = monitor.size().height;
     let scale = monitor.scale_factor();
 
+    // 更新滑鼠鉤子的螢幕偏移
+    hook::set_monitor(x, y, scale);
+    hook::install();
+
+    if let Some(overlay) = app.get_webview_window("overlay") {
+        // Overlay 已存在 → 立即套用實體像素定位，並在 150ms 後再次確保正確大小
+        let _ = overlay.set_position(PhysicalPosition::new(x, y));
+        let _ = overlay.set_size(PhysicalSize::new(w, h));
+        overlay.show().map_err(|e| e.to_string())?;
+        schedule_overlay_geometry(app, x, y, w, h);
+        return Ok(());
+    }
+
+    // 建立時 visible(false)，先設實體位置/大小再顯示；
+    // 並在 150ms 後再次修正，防止 WM_DPICHANGED 把大小蓋掉
     let window = WebviewWindowBuilder::new(
         &app,
         "overlay",
@@ -128,18 +161,15 @@ async fn create_overlay_window(app: tauri::AppHandle) -> Result<(), String> {
     .decorations(false)
     .always_on_top(true)
     .skip_taskbar(true)
-    .inner_size(size.width as f64 / scale, size.height as f64 / scale)
-    .position(pos.x as f64, pos.y as f64)
+    .visible(false)
     .build()
     .map_err(|e| e.to_string())?;
 
-    // 修正 A：OS 層穿透，讓桌面可正常點擊
-    window
-        .set_ignore_cursor_events(true)
-        .map_err(|e| e.to_string())?;
-
-    hook::set_monitor(pos.x, pos.y, scale);
-    hook::install();
+    window.set_ignore_cursor_events(true).map_err(|e| e.to_string())?;
+    let _ = window.set_position(PhysicalPosition::new(x, y));
+    let _ = window.set_size(PhysicalSize::new(w, h));
+    window.show().map_err(|e| e.to_string())?;
+    schedule_overlay_geometry(app, x, y, w, h);
 
     Ok(())
 }
@@ -209,6 +239,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             show_main_window,
             quit_app,
+            hide_main_window,
             create_overlay_window,
             destroy_overlay_window,
             check_overlay_exists,

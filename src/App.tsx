@@ -12,6 +12,7 @@ import { FishOverlay } from '@/components/FishOverlay'
 import { ResizeHandles } from '@/components/ResizeHandles'
 import { SettingsPanel } from '@/components/SettingsPanel'
 import { NotepadPanel } from '@/components/NotepadPanel'
+import { PomodoroWidget } from '@/components/PomodoroWidget'
 import { UpdateNotification } from '@/components/UpdateNotification'
 import { useTodos } from '@/hooks/useTodos'
 import { useSettingsProvider, SettingsContext, useSettings } from '@/hooks/useSettings'
@@ -166,7 +167,7 @@ function MainWidgetInner() {
       <Separator className="bg-white/15 shrink-0 mx-2.5 my-1.5" />
 
       {/* ② 植物生長 */}
-      <div className="widget-section py-1" style={{ height: sectionHeights.plant, minHeight: 80 }}>
+      <div className="widget-section pt-3 pb-1" style={{ height: sectionHeights.plant, minHeight: 80 }}>
         <PlantWidget completionRate={completionRate} total={total} done={done} />
       </div>
 
@@ -182,7 +183,15 @@ function MainWidgetInner() {
         </>
       )}
 
-      {/* ④ 待辦事項 / 記事本（同一空間切換） */}
+      {/* ④ 番茄鐘 */}
+      {settings.showPomodoro && (
+        <>
+          <PomodoroWidget />
+          <Separator className="bg-white/6 shrink-0 mx-2.5" />
+        </>
+      )}
+
+      {/* ⑤ 待辦事項 / 記事本（同一空間切換） */}
       <div className="widget-section flex-1 min-h-0 flex flex-col">
         {notepadOpen ? (
           <NotepadPanel content={notepad.content} onContentChange={notepad.setContent} />

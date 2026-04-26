@@ -58,10 +58,9 @@ export function TitleBar({ fishActive, onFishToggle, onSettingsToggle, notepadAc
     await getCurrentWindow().minimize()
   }
 
-  // 修正 C：× 按鈕真正關閉 APP
-  async function handleClose(e: React.MouseEvent) {
+  async function handleHide(e: React.MouseEvent) {
     e.stopPropagation()
-    await invoke('quit_app')
+    await invoke('hide_main_window')
   }
 
   return (
@@ -158,11 +157,11 @@ export function TitleBar({ fishActive, onFishToggle, onSettingsToggle, notepadAc
           <TooltipContent side="bottom"><p>最小化</p></TooltipContent>
         </Tooltip>
 
-        {/* Close APP */}
+        {/* Hide to tray */}
         <Tooltip>
           <TooltipTrigger asChild>
             <button
-              onClick={handleClose}
+              onClick={handleHide}
               className="w-6 h-6 rounded flex items-center justify-center text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all"
             >
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -170,7 +169,7 @@ export function TitleBar({ fishActive, onFishToggle, onSettingsToggle, notepadAc
               </svg>
             </button>
           </TooltipTrigger>
-          <TooltipContent side="bottom"><p>關閉</p></TooltipContent>
+          <TooltipContent side="bottom"><p>隱藏至托盤</p></TooltipContent>
         </Tooltip>
       </div>
     </div>
